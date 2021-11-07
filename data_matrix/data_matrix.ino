@@ -1,3 +1,7 @@
+// data matrix stores state of LEDs
+// 0 = off, 1 = on
+// TinkerCAD demo: https://www.tinkercad.com/things/fR6m3BTW82e-copy-of-8-bit-shift-register-led-onoff-with-ldr/editel?tenant=circuits
+
 // 1 shift register can output 1 byte of data aka 8 bits
 // to make the shift registers easier to program,
 // these values can be multiples of 8 
