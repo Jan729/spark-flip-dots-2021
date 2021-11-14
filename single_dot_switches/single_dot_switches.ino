@@ -1,3 +1,5 @@
+//FIXME the high side switches seem to be flickering. not sure why
+
 // Functions that will flip a single dot
 // Pins 3, 4, 5 and 6 are connected to switches
 
