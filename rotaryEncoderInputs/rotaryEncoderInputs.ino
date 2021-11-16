@@ -6,6 +6,7 @@
 */
 
 //reference code https://wokwi.com/arduino/projects/304919215794553409
+//simulation of this code: https://wokwi.com/arduino/projects/314704479494603328
 
 #define ENCODER_CLK_V 2
 #define ENCODER_DT_V 3
