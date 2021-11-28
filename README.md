@@ -1,2 +1,2 @@
-# spark-flip-dots-2021
-16x16 Flip dot display
+# spark-etch-a-sketch-2021
+32 x 32 custom LED matrix display
