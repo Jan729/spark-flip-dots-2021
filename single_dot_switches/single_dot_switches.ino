@@ -1,3 +1,10 @@
+//FIXME the high side switches seem to be flickering. not sure why
+
+//TinkerCAD demo link: https://www.tinkercad.com/things/jeobTfsc8TO-super-fyyran/editel?tenant=circuits
+// Used a white LED and blue LED to represent the flip dot inductor
+// White LED lit up = current flowing in "set dot" direction
+// Blue LED lit up = current flowing in "reset dot" direction
+
 // Functions that will flip a single dot
 // Pins 3, 4, 5 and 6 are connected to switches
 
