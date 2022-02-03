@@ -9,20 +9,30 @@
 // someone presses the Print button
 
 #include <Wire.h>
+
 // TinkerCAD doesn't have FastLED :'( #include <FastLED.h>
 // I'll use boolean 1 or 0 instead
 
 #define NUM_STRIPS 32
 #define NUM_LEDS_PER_STRIP 32
+#define NUM_PRINTER_PATTERN_BYTES 32
+#define BYTES_PER_ROW 4
 
 // Caution: the led array indexing is different on TinkerCAD
 // than the wowki simulator
 
-// leds[0][0] is the top left corner
-// leds[0][31] is the top right corner
-// leds[31][0] is the bottom left corner
-// leds[31][31] is the bottom right corner
+// temporary array to make TinkerCAD simulation work
 boolean leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
+
+// use me for the real code
+// CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
+
+byte shadedPunchPattern[NUM_PRINTER_PATTERN_BYTES];
+byte singleColourPunchPattern[NUM_PRINTER_PATTERN_BYTES];
+
+// TODO: program two receipt printer buttons if we want to use both
+// algorithms for generating punch patterns
+boolean sendSingleColourPattern = true;
 
 void setup()
 {
@@ -38,47 +48,84 @@ void setup()
         }
     }
 
-    CreateDummyPicture();
+    createDummyPicture();
 }
 
 void loop()
 {
-    SendPunchSequence();
+    sendPunchSequence();
+
+    // TODO program print button
 
     delay(5000);
 }
 
 // Send all 256 pixels as a 1 or 0
-void SendPunchSequence()
+void sendPunchSequence()
 {
-    for (int row = 0; row < NUM_STRIPS; row++)
+
+    if (sendSingleColourPunchPattern)
+    {
+        generateSingleColourPunchPattern();
+    }
+    else
+    {
+        generateShadedPunchPattern();
+    }
+
+    for (int startOfRow = 0; startOfRow < NUM_PRINTER_PATTERN_BYTES; row += BYTES_PER_ROW)
     {
         Wire.beginTransmission(4); // transmit one row of data to device #4
 
-        // After mapping 8 pixel values to 0 or 1,
-        //write 1 byte of data at a time
-
-        for (int col = 0; col < NUM_LEDS_PER_STRIP; col += 8)
+        for (int bytes = 0; bytes < BYTES_PER_ROW; bytes++)
         {
-            byte compressedBits = CompressedColourData(row, col);
-            Wire.write(compressedBits);
-            Serial.print(compressedBits, BIN);
+            int i = row * BYTES_PER_ROW + bytes;
+
+            if (sendSingleColourPattern)
+            {
+                Wire.write(singleColourPunchPattern[i]);
+                Serial.print(singleColourPunchPattern[i], BIN); // TODO remove me when done debugging
+            }
+            else
+            {
+                Wire.write(shadedPunchPattern[i]);
+                Serial.print(shadedPunchPattern[i]);
+            }
         }
-        Serial.println();
+
+        Serial.println(); // TODO remove me when done debugging
         if (Wire.endTransmission() != 0)
         {
             Serial.println("Error transmitting!");
         }
     }
 }
+}
 
-byte CompressedColourData(int row, int col)
+// punches a hole (sets a bit to 1) if the led is lit
+// image resolution is 32x32
+void generateSingleColourPunchPattern()
+{
+    int i = 0;
+    for (int row = 0; row < NUM_STRIPS; row++)
+    {
+        for (int col = 0; col < NUM_LEDS_PER_STRIP; col += 8)
+        {
+            singleColourPunchPattern[i] = compressSingleColourData(row, col);
+            i++;
+        }
+    }
+}
+
+// maps 8 leds to one byte, row by row, 4 bytes per row
+byte compressSingleColourData(int row, int col)
 {
     byte data = 0;
 
     for (int i = 0; i < 8; i++)
     {
-        if (leds[row][col + i])
+        // TODO: uncomment the following condition for the real prototype
+        if (leds[row][col + i]) // leds[row][col + i] == CRGB(0x000000)
         {
             data |= (1 << i);
         }
@@ -86,21 +133,76 @@ byte CompressedColourData(int row, int col)
     return data;
 }
 
-void CreateDummyPicture()
+void generateShadedPunchPattern(int row, int col)
 {
-    //left eye
+    // FIXME find a more memory-efficient way to do this
+    boolean uncompressedPattern[NUM_LEDS_PER_STRIP][NUM_STRIPS];
+
+    // for each 2x2 square of leds, average the colours and map it to a shaded 2x2 punch pattern
+    // the final image resolution will be reduced to 16x16
+    // see the Notion page for more info
+    // https://www.notion.so/SendPunchSequence-struct-punch_encoding-pattern-78d25b63250348c6a8cfb363eebb98ca
+    for (int rowTopLeft = 0; rowTopLeft < NUM_LEDS_PER_STRIP; rowTopLeft += 2)
+    {
+        for (int colTopLeft = 0; colTopLeft < NUM_STRIPS; colTopLeft += 2)
+        {
+            // TODO use the actual CRGB data type when prototyping IRL
+            int avgColour = (leds[rowTopLeft][colTopLeft] + leds[rowTopLeft + 1][colTopLeft] + leds[rowTopLeft][colTopLeft + 1] + leds[rowTopLeft + 1][colTopLeft + 1]) / 4;
+
+            // intentionally omitting the break; because
+            // i want the remaining holes to get punched too
+            switch (avgColour)
+            {
+            case 4: // punch bottom left
+                uncompressedPattern[rowTopLeft + 1][colTopLeft] = 1;
+            case 3: // punch top right
+                uncompressedPattern[rowTopLeft][colTopLeft + 1] = 1;
+            case 2: // punch bottom right
+                uncompressedPattern[rowTopLeft + 1][colTopLeft + 1] = 1;
+            case 1: // punch top left
+                uncompressedPattern[rowTopLeft][colTopLeft] = 1;
+            case 0: // if we get here without entering the above cases, we haven't punched anything
+            }
+        }
+    }
+
+    // compress 32x32 array into 32 bytes
+    int byteIdx = 0;
+    for (int row = 0; row < NUM_STRIPS; row++)
+    {
+        for (int col = 0; col < NUM_LEDS_PER_STRIP; col += 8)
+        {
+            byte data = 0;
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (uncompressedPattern[row][col + i])
+                {
+                    data |= (1 << i);
+                }
+
+                shadedPunchPattern[byteIdx] = data;
+                byteIdx++;
+            }
+        }
+    }
+}
+
+void createDummyPicture()
+{
+    // left eye
     leds[4][3] = 0;
     leds[4][4] = 0;
     leds[5][3] = 0;
     leds[5][4] = 0;
 
-    //right eye
+    // right eye
     leds[4][27] = 0;
     leds[4][28] = 0;
     leds[5][27] = 0;
     leds[5][28] = 0;
 
-    //mouth
+    // mouth
     for (int col = 7; col <= 21; col++)
     {
         leds[10][col] = 0;
