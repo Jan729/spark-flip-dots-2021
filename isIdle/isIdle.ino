@@ -22,9 +22,7 @@ and the last one is for colour picking. Refer to the Notion
 #define ENCODER_CLK_C 5
 #define ENCODER_DT_C 4
 
-#define IDLE_TIMEOUT 10000 // 300000 = 5 minutes
-
-#define CLEAR_PIN 2
+#define CLEAR_PIN 18
 
 uint8_t vertical = 0;
 String Vertical;
@@ -47,6 +45,7 @@ volatile bool shouldClearDisplay = false;
 int prevVertical = 0;
 int prevHorizontal = 0;
 volatile unsigned long lastActive = millis();
+unsigned long  IDLE_TIMEOUT = 10000;
 
 // leds[0][0] is the bottom left corner
 // leds[0][31] is the bottom right corner
@@ -77,38 +76,38 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(CLEAR_PIN), HandleClearButton, LOW);
 
   // tell FastLED there's 32 WS2812B leds on pins 10-41
-  FastLED.addLeds<WS2812B, 10, GRB>(leds[0], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 11, GRB>(leds[1], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 12, GRB>(leds[2], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 13, GRB>(leds[3], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 14, GRB>(leds[4], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 15, GRB>(leds[5], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 16, GRB>(leds[6], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 17, GRB>(leds[7], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 18, GRB>(leds[8], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 19, GRB>(leds[9], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 20, GRB>(leds[10], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 21, GRB>(leds[11], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 22, GRB>(leds[12], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 23, GRB>(leds[13], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 24, GRB>(leds[14], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 25, GRB>(leds[15], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 26, GRB>(leds[16], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 27, GRB>(leds[17], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 28, GRB>(leds[18], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 29, GRB>(leds[19], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 30, GRB>(leds[20], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 31, GRB>(leds[21], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 32, GRB>(leds[22], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 33, GRB>(leds[23], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 34, GRB>(leds[24], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 35, GRB>(leds[25], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 36, GRB>(leds[26], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 37, GRB>(leds[27], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 38, GRB>(leds[28], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 39, GRB>(leds[29], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 40, GRB>(leds[30], NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 41, GRB>(leds[31], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 22, GRB>(leds[0], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 23, GRB>(leds[1], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 24, GRB>(leds[2], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 25, GRB>(leds[3], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 26, GRB>(leds[4], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 27, GRB>(leds[5], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 28, GRB>(leds[6], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 29, GRB>(leds[7], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 30, GRB>(leds[8], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 31, GRB>(leds[9], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 32, GRB>(leds[10], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 33, GRB>(leds[11], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 34, GRB>(leds[12], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 35, GRB>(leds[13], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 36, GRB>(leds[14], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 37, GRB>(leds[15], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 38, GRB>(leds[16], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 39, GRB>(leds[17], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 40, GRB>(leds[18], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 41, GRB>(leds[19], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 42, GRB>(leds[20], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 43, GRB>(leds[21], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 44, GRB>(leds[22], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 45, GRB>(leds[23], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 46, GRB>(leds[24], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 47, GRB>(leds[25], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 48, GRB>(leds[26], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 49, GRB>(leds[27], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 50, GRB>(leds[28], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 51, GRB>(leds[29], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 52, GRB>(leds[30], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<WS2812B, 53, GRB>(leds[31], NUM_LEDS_PER_STRIP);
 
   leds[0][0] = CRGB::Red;
   FastLED.show();
@@ -220,6 +219,7 @@ void CheckIfIdle() {
     ClearDisplay();
     playEtchASketch = false;
   }
+
 }
 
 void PlayAnimations() {
@@ -244,7 +244,7 @@ void HandleClearButton() {
 void ClearDisplay() {
   for(int row = 0; row < NUM_STRIPS; row++) {
       for(int col = 0; col < NUM_LEDS_PER_STRIP; col++) {
-        leds[row][col] = CRGB::CRGB::White;
+        leds[row][col] = CRGB::CRGB::Black;
       }
   }
   FastLED.show();

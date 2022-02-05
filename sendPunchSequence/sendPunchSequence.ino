@@ -27,93 +27,34 @@ boolean leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
 // use me for the real code
 // CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
 
-byte shadedPunchPattern[NUM_PRINTER_PATTERN_BYTES];
-byte singleColourPunchPattern[NUM_PRINTER_PATTERN_BYTES];
+byte printerEncodingPattern[NUM_PRINTER_PATTERN_BYTES];
 
 // TODO: program two receipt printer buttons if we want to use both
 // algorithms for generating punch patterns
 boolean sendSingleColourPattern = true;
-
-void setup()
+void createDummyPicture()
 {
-    Wire.begin(); // join i2c bus (address optional for master)
-    Serial.begin(9600);
-    Serial.println("I am etch a sketch arduino");
+    // left eye
+    leds[4][3] = 0;
+    leds[4][4] = 0;
+    leds[5][3] = 0;
+    leds[5][4] = 0;
 
-    for (int row = 0; row < NUM_STRIPS; row++)
+    // right eye
+    leds[4][27] = 0;
+    leds[4][28] = 0;
+    leds[5][27] = 0;
+    leds[5][28] = 0;
+
+    // mouth
+    for (int col = 7; col <= 21; col++)
     {
-        for (int col = 0; col < NUM_LEDS_PER_STRIP; col++)
-        {
-            leds[row][col] = 1;
-        }
+        leds[10][col] = 0;
+        leds[11][col] = 0;
     }
-
-    createDummyPicture();
-}
-
-void loop()
-{
-    sendPunchSequence();
-
-    // TODO program print button
-
-    delay(5000);
-}
-
-// Send all 256 pixels as a 1 or 0
-void sendPunchSequence()
-{
-
-    if (sendSingleColourPunchPattern)
+    for (int col = 7; col <= 21; col++)
     {
-        generateSingleColourPunchPattern();
-    }
-    else
-    {
-        generateShadedPunchPattern();
-    }
-
-    for (int startOfRow = 0; startOfRow < NUM_PRINTER_PATTERN_BYTES; row += BYTES_PER_ROW)
-    {
-        Wire.beginTransmission(4); // transmit one row of data to device #4
-
-        for (int bytes = 0; bytes < BYTES_PER_ROW; bytes++)
-        {
-            int i = row * BYTES_PER_ROW + bytes;
-
-            if (sendSingleColourPattern)
-            {
-                Wire.write(singleColourPunchPattern[i]);
-                Serial.print(singleColourPunchPattern[i], BIN); // TODO remove me when done debugging
-            }
-            else
-            {
-                Wire.write(shadedPunchPattern[i]);
-                Serial.print(shadedPunchPattern[i]);
-            }
-        }
-
-        Serial.println(); // TODO remove me when done debugging
-        if (Wire.endTransmission() != 0)
-        {
-            Serial.println("Error transmitting!");
-        }
-    }
-}
-}
-
-// punches a hole (sets a bit to 1) if the led is lit
-// image resolution is 32x32
-void generateSingleColourPunchPattern()
-{
-    int i = 0;
-    for (int row = 0; row < NUM_STRIPS; row++)
-    {
-        for (int col = 0; col < NUM_LEDS_PER_STRIP; col += 8)
-        {
-            singleColourPunchPattern[i] = compressSingleColourData(row, col);
-            i++;
-        }
+        leds[10][col] = col % 2;
     }
 }
 
@@ -133,7 +74,9 @@ byte compressSingleColourData(int row, int col)
     return data;
 }
 
-void generateShadedPunchPattern(int row, int col)
+// can free memory
+
+void generateShadedPunchPattern()
 {
     // FIXME find a more memory-efficient way to do this
     boolean uncompressedPattern[NUM_LEDS_PER_STRIP][NUM_STRIPS];
@@ -161,7 +104,7 @@ void generateShadedPunchPattern(int row, int col)
                 uncompressedPattern[rowTopLeft + 1][colTopLeft + 1] = 1;
             case 1: // punch top left
                 uncompressedPattern[rowTopLeft][colTopLeft] = 1;
-            case 0: // if we get here without entering the above cases, we haven't punched anything
+            case 0:; // if we get here without entering the above cases, we haven't punched anything
             }
         }
     }
@@ -181,35 +124,82 @@ void generateShadedPunchPattern(int row, int col)
                     data |= (1 << i);
                 }
 
-                shadedPunchPattern[byteIdx] = data;
+                printerEncodingPattern[byteIdx] = data;
                 byteIdx++;
             }
         }
     }
 }
 
-void createDummyPicture()
+// punches a hole (sets a bit to 1) if the led is lit
+// image resolution is 32x32
+void generatePunchPattern()
 {
-    // left eye
-    leds[4][3] = 0;
-    leds[4][4] = 0;
-    leds[5][3] = 0;
-    leds[5][4] = 0;
-
-    // right eye
-    leds[4][27] = 0;
-    leds[4][28] = 0;
-    leds[5][27] = 0;
-    leds[5][28] = 0;
-
-    // mouth
-    for (int col = 7; col <= 21; col++)
+    int i = 0;
+    for (int row = 0; row < NUM_STRIPS; row++)
     {
-        leds[10][col] = 0;
-        leds[11][col] = 0;
+        for (int col = 0; col < NUM_LEDS_PER_STRIP; col += 8)
+        {
+            printerEncodingPattern[i] = compressSingleColourData(row, col);
+            i++;
+        }
     }
-    for (int col = 7; col <= 21; col++)
+}
+
+// Send all 256 pixels as a 1 or 0
+void sendPunchSequence()
+{
+    boolean doneGeneratingPattern = false;
+    if (sendSingleColourPattern)
     {
-        leds[10][col] = col % 2;
+        generatePunchPattern();
     }
+    else
+    {
+        generateShadedPunchPattern();
+    }
+
+    int byteIdx = 0;
+    for (int row = 0; row < NUM_STRIPS; row++)
+    {
+        Wire.beginTransmission(4); // transmit one row of data to device #4
+
+        for (int bytes = 0; bytes < BYTES_PER_ROW; bytes++)
+        {
+            Wire.write(printerEncodingPattern[byteIdx]);
+            // Serial.print(printerEncodingPattern[byteIdx], BIN); // TODO remove me when done debugging
+            byteIdx++;
+        }
+        // Serial.println(); // TODO remove me when done debugging
+        if (Wire.endTransmission() != 0)
+        {
+            Serial.println("Error transmitting!");
+        }
+    }
+}
+
+void setup()
+{
+    Wire.begin(); // join i2c bus (address optional for master)
+    Serial.begin(9600);
+    Serial.println("I am etch a sketch arduino");
+
+    for (int row = 0; row < NUM_STRIPS; row++)
+    {
+        for (int col = 0; col < NUM_LEDS_PER_STRIP; col++)
+        {
+            leds[row][col] = 1;
+        }
+    }
+
+    createDummyPicture();
+}
+
+void loop()
+{
+    sendPunchSequence();
+
+    // TODO program print button
+
+    delay(5000);
 }
