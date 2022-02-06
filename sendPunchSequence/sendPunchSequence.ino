@@ -148,7 +148,7 @@ void generatePunchPattern(byte *patternBuffer)
 void sendPunchSequence()
 {
     boolean doneGeneratingPattern = false;
-    byte * patternBuffer = (byte *)malloc(NUM_PRINTER_PATTERN_BYTES * sizeof(byte));
+    byte *patternBuffer = (byte *)malloc(NUM_PRINTER_PATTERN_BYTES * sizeof(byte));
 
     if (sendSingleColourPattern)
     {
@@ -200,5 +200,6 @@ void loop()
     sendPunchSequence();
 
     // TODO program print button
-    while(1); // do nothing
+    while (1)
+        ; // do nothing
 }
