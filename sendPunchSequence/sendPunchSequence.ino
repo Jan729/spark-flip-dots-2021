@@ -16,6 +16,7 @@
 #define NUM_STRIPS 32
 #define NUM_LEDS_PER_STRIP 32
 #define NUM_PRINTER_PATTERN_BYTES 32
+#define ROWS_PER_SHADED_PIXEL 2
 #define BYTES_PER_ROW 4
 
 // Caution: the led array indexing is different on TinkerCAD
@@ -23,11 +24,6 @@
 
 // temporary array to make TinkerCAD simulation work
 boolean leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
-
-// use me for the real code
-// CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
-
-byte printerEncodingPattern[NUM_PRINTER_PATTERN_BYTES];
 
 // TODO: program two receipt printer buttons if we want to use both
 // algorithms for generating punch patterns
@@ -76,10 +72,11 @@ byte compressSingleColourData(int row, int col)
 
 // can free memory
 
-void generateShadedPunchPattern()
+void generateShadedPunchPattern(byte *patternBuffer)
 {
-    // FIXME find a more memory-efficient way to do this
-    boolean uncompressedPattern[NUM_LEDS_PER_STRIP][NUM_STRIPS];
+    byte *shadedPatternRow = (byte *)malloc(NUM_LEDS_PER_STRIP * ROWS_PER_SHADED_PIXEL * sizeof(byte));
+    byte compressedData;
+    byte byteIdx = 0;
 
     // for each 2x2 square of leds, average the colours and map it to a shaded 2x2 punch pattern
     // the final image resolution will be reduced to 16x16
@@ -89,58 +86,59 @@ void generateShadedPunchPattern()
     {
         for (int colTopLeft = 0; colTopLeft < NUM_STRIPS; colTopLeft += 2)
         {
-            // TODO use the actual CRGB data type when prototyping IRL
+            // TODO use the actual CRGB colour mapping when prototyping IRL
+            // where yellow = 1, green = 2, red = 3, blue or purple = 4
             int avgColour = (leds[rowTopLeft][colTopLeft] + leds[rowTopLeft + 1][colTopLeft] + leds[rowTopLeft][colTopLeft + 1] + leds[rowTopLeft + 1][colTopLeft + 1]) / 4;
 
-            // intentionally omitting the break; because
+            byte topLeftHole = colTopLeft;
+            byte topRightHole = colTopLeft + 1;
+            byte bottomLeftHole = 32 + colTopLeft;
+            byte bottomRightHole = 32 + colTopLeft + 1;
+
+            // intentionally omitting the "break;"" because
             // i want the remaining holes to get punched too
             switch (avgColour)
             {
-            case 4: // punch bottom left
-                uncompressedPattern[rowTopLeft + 1][colTopLeft] = 1;
-            case 3: // punch top right
-                uncompressedPattern[rowTopLeft][colTopLeft + 1] = 1;
-            case 2: // punch bottom right
-                uncompressedPattern[rowTopLeft + 1][colTopLeft + 1] = 1;
-            case 1: // punch top left
-                uncompressedPattern[rowTopLeft][colTopLeft] = 1;
-            case 0:; // if we get here without entering the above cases, we haven't punched anything
+            case 4:
+                shadedPatternRow[bottomLeftHole] = 1;
+            case 3:
+                shadedPatternRow[topRightHole] = 1;
+            case 2:
+                shadedPatternRow[bottomRightHole] = 1;
+            case 1:
+                shadedPatternRow[topLeftHole] = 1;
+            case 0:; // if we get here without entering the above cases, we leave the paper untouched
             }
         }
-    }
 
-    // compress 32x32 array into 32 bytes
-    int byteIdx = 0;
-    for (int row = 0; row < NUM_STRIPS; row++)
-    {
-        for (int col = 0; col < NUM_LEDS_PER_STRIP; col += 8)
+        for (int i = 0; i < NUM_LEDS_PER_STRIP * ROWS_PER_SHADED_PIXEL; i++)
         {
-            byte data = 0;
-
-            for (int i = 0; i < 8; i++)
+            if (shadedPatternRow[i] == 1)
             {
-                if (uncompressedPattern[row][col + i])
-                {
-                    data |= (1 << i);
-                }
+                compressedData |= (1 << i);
+            }
 
-                printerEncodingPattern[byteIdx] = data;
+            if ((i + 1) % 8 == 0)
+            {
+                patternBuffer[byteIdx] = compressedData;
+                compressedData = 0;
                 byteIdx++;
             }
         }
     }
+    free(shadedPatternRow);
 }
 
 // punches a hole (sets a bit to 1) if the led is lit
 // image resolution is 32x32
-void generatePunchPattern()
+void generatePunchPattern(byte *patternBuffer)
 {
     int i = 0;
     for (int row = 0; row < NUM_STRIPS; row++)
     {
         for (int col = 0; col < NUM_LEDS_PER_STRIP; col += 8)
         {
-            printerEncodingPattern[i] = compressSingleColourData(row, col);
+            patternBuffer[i] = compressSingleColourData(row, col);
             i++;
         }
     }
@@ -150,13 +148,15 @@ void generatePunchPattern()
 void sendPunchSequence()
 {
     boolean doneGeneratingPattern = false;
+    byte * patternBuffer = (byte *)malloc(NUM_PRINTER_PATTERN_BYTES * sizeof(byte));
+
     if (sendSingleColourPattern)
     {
-        generatePunchPattern();
+        generatePunchPattern(patternBuffer);
     }
     else
     {
-        generateShadedPunchPattern();
+        generateShadedPunchPattern(patternBuffer);
     }
 
     int byteIdx = 0;
@@ -166,23 +166,23 @@ void sendPunchSequence()
 
         for (int bytes = 0; bytes < BYTES_PER_ROW; bytes++)
         {
-            Wire.write(printerEncodingPattern[byteIdx]);
-            // Serial.print(printerEncodingPattern[byteIdx], BIN); // TODO remove me when done debugging
+            Wire.write(patternBuffer[byteIdx]);
+            // Serial.print(patternBuffer[byteIdx], BIN); // TODO remove me when done debugging
             byteIdx++;
         }
         // Serial.println(); // TODO remove me when done debugging
         if (Wire.endTransmission() != 0)
         {
-            Serial.println("Error transmitting!");
+            Serial.println("Error!");
         }
     }
+    free(patternBuffer);
 }
 
 void setup()
 {
     Wire.begin(); // join i2c bus (address optional for master)
     Serial.begin(9600);
-    Serial.println("I am etch a sketch arduino");
 
     for (int row = 0; row < NUM_STRIPS; row++)
     {
@@ -200,6 +200,5 @@ void loop()
     sendPunchSequence();
 
     // TODO program print button
-
-    delay(5000);
+    while(1); // do nothing
 }
