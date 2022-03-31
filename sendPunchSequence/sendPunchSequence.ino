@@ -69,7 +69,7 @@ static const uint32_t kirby32x32_data[1024] PROGMEM = {
 
 // TODO: program two receipt printer buttons if we want to use both
 // algorithms for generating punch patterns
-boolean sendSingleColourPattern = false;
+boolean sendSingleColourPattern = true;
 
 void printLeadingZeroes(byte var) {
   for (int i = 0; i < 7; i++) {
