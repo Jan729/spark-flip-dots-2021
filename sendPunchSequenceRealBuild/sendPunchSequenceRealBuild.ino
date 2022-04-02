@@ -67,7 +67,7 @@ void generateShadedPunchPattern(byte *patternBuffer)
             // TODO use the actual CRGB colour mapping when prototyping IRL
             // where yellow = 1, green = 2, red = 3, blue or purple = 4
             CRGB avgColour = (leds[rowTopLeft][colTopLeft] + leds[rowTopLeft + 1][colTopLeft] + leds[rowTopLeft][colTopLeft + 1] + leds[rowTopLeft + 1][colTopLeft + 1]) / 4;
-
+            
             byte topLeftHole = colTopLeft;
             byte topRightHole = colTopLeft + 1;
             byte bottomLeftHole = 32 + colTopLeft;
@@ -157,26 +157,25 @@ void sendPunchSequence()
     free(patternBuffer);
 }
 
+void checkPrintButton() {
+    int printButton = digitalRead(buttonPin);
+
+    if (printButton == HIGH) {
+        sendPunchSequence();
+    } 
+
+    // TODO: how long should we wait until printing is complete before resuming gameplay?
+    // we don't want the leds to change while printing
+    delay(10000); 
+}
+
 void setup()
 {
     Wire.begin(); // join i2c bus (address optional for master)
     Serial.begin(9600);
-  	int px = 1023;
-
-    for (int row = NUM_STRIPS - 1; row >=0; row--)
-    {
-        for (int col = 0; col < NUM_LEDS_PER_STRIP; col++)
-        {
-          	leds[row][col] =(pgm_read_dword(&(kirby32x32_data[px]))) > 0xff000000;
-            px--;
-        }
-    }
 }
 
 void loop()
 {
-    sendPunchSequence();
-
-    // TODO program print button
-    while(1); // do nothing
+    checkPrintButton();
 }
