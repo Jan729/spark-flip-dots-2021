@@ -15,7 +15,6 @@
 // TODO: Decide which printer algorithm to use. which one looks better?
 // Alternatively, you could program a second button and have a second print button if you can't decide.
 
-
 #include <Wire.h>
 #include <FastLED.h>
 
@@ -25,10 +24,9 @@
 #define ROWS_PER_SHADED_PIXEL 2
 #define BYTES_PER_ROW 4
 
-
 CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
 
-boolean sendSingleColourPattern = true;
+boolean sendSingleColourPattern = true; // set this to false if you want the shaded pattern
 
 void printLeadingZeroes(byte var) {
   for (int i = 0; i < 7; i++) {
@@ -50,23 +48,45 @@ byte compressSingleColourData(int row, int col)
     return data;
 }
 
+// Returns a number from 0 to 4, 0 for darkest colours, 4 for lightest colours
+//See readme for details
+int computeAverageColour(int rowTopL, int colTopL) {
+    uint16_t avg = 0;
+
+    for (int r = 0; r <= 1; r++) {
+        for(int c = 0; c <= 1; c++) {
+            avg += (uint16_t)leds[rowTopL+r][colTopL+c].red + (uint16_t)leds[rowTopL+r][colTopL+c].green;
+        }
+    }
+    avg /= 8;
+
+    if (avg >= 220) { // yellow-ish
+        return 4;
+    } else if (avg >= 180) { // green-ish
+        return 3;
+    } else if (avg >= 150) { // blue-ish
+        return 2;
+    } else if (avg >= 140) {  // purple-ish
+        return 1;
+    } else if (avg >=  129) { // red-ish
+        return 1;
+    } else { // black-ish
+        return 0;
+    }
+}
+
+// see readme for details
 void generateShadedPunchPattern(byte *patternBuffer)
 {
     byte *shadedPatternRow = (byte *)malloc(NUM_LEDS_PER_STRIP * ROWS_PER_SHADED_PIXEL * sizeof(byte));
     byte compressedData;
     byte byteIdx = 0;
 
-    // average the colours and map it to a shaded 2x2 punch pattern
-    // the final image resolution will be reduced to 16x16, with 2x2 pixels
-    // see the Notion page for more info
-    // https://www.notion.so/SendPunchSequence-struct-punch_encoding-pattern-78d25b63250348c6a8cfb363eebb98ca
     for (int rowTopLeft = 0; rowTopLeft < NUM_LEDS_PER_STRIP; rowTopLeft += 2)
     {
         for (int colTopLeft = 0; colTopLeft < NUM_STRIPS; colTopLeft += 2)
         {
-            // TODO use the actual CRGB colour mapping when prototyping IRL
-            // where yellow = 1, green = 2, red = 3, blue or purple = 4
-            CRGB avgColour = (leds[rowTopLeft][colTopLeft] + leds[rowTopLeft + 1][colTopLeft] + leds[rowTopLeft][colTopLeft + 1] + leds[rowTopLeft + 1][colTopLeft + 1]) / 4;
+            int numPunches = computeAverageColour(rowTopLeft, colTopLeft);
             
             byte topLeftHole = colTopLeft;
             byte topRightHole = colTopLeft + 1;
@@ -75,7 +95,8 @@ void generateShadedPunchPattern(byte *patternBuffer)
 
             // intentionally omitting the "break;"" because
             // i want the remaining holes to get punched too
-            switch (avgColour)
+            // 1 = hole punch
+            switch (numPunches)
             {
             case 4:
                 shadedPatternRow[bottomLeftHole] = 1;
