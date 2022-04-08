@@ -9,7 +9,7 @@ import sys
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-def resize_image(image, filename="", autosave=True, image_mode=Image.NEAREST):
+def resize_image(image, filename="", autosave=True, image_mode=Image.Resampling.NEAREST):
     height = image.height
     width = image.width
     resized=image.resize((32,32), image_mode)
@@ -49,7 +49,7 @@ def write_image_text(image, filename, printO=False, fix=True, autoclose=True, fi
         f.close()
     #print(count)
 
-def scale_gif(path, scale, new_path=None, image_mode=Image.LANCZOS):
+def scale_gif(path, scale, new_path=None, image_mode=Image.Resampling.LANCZOS):
     gif = Image.open(path)
     if not new_path:
         new_path = path
@@ -62,7 +62,7 @@ def scale_gif(path, scale, new_path=None, image_mode=Image.LANCZOS):
     new_frames = get_new_frames(gif, scale, image_mode=image_mode)
     save_new_gif(new_frames, old_gif_information, new_path)
 
-def get_new_frames(gif, scale, image_mode=Image.LANCZOS):
+def get_new_frames(gif, scale, image_mode=Image.Resampling.LANCZOS):
     new_frames = []
     actual_frames = gif.n_frames
     for frame in range(actual_frames):
@@ -82,13 +82,15 @@ def save_new_gif(new_frames, old_gif_information, new_path):
                        background = old_gif_information['background'],
                        extension = old_gif_information['extension'])
 
-def write_gif_text(gif, filename, delay=9, printO=False, fix=True, image_mode=Image.LANCZOS):
+def write_gif_text(gif, filename, delay=9, printO=False, fix=True, image_mode=Image.Resampling.LANCZOS):
     new_frames=get_new_frames(gif, (32,32), image_mode=image_mode)
-    #delay=gif.info.get('duration')
+    delay=gif.info.get('duration')
     if delay==13:
         delay=12
     if delay==10:
         delay=9
+    if printO:
+        print("DELAY: " +str(delay))
     write_image_text(new_frames[0], filename, printO=printO, fix=fix, filemode='w')
     f=open(filename,'a')
     f.write(chr(delay))
@@ -100,11 +102,14 @@ def write_gif_text(gif, filename, delay=9, printO=False, fix=True, image_mode=Im
         f.close()
 
 
-def image2txt(input_file, output_file, image_mode=Image.NEAREST):
-    resized=resize_image(Image.open(input_file), autosave=False, Image_mode=image_mode)
-    write_image_text(resized, output_file)
+def image2txt(input_file, output_file, image_mode=Image.Resampling.NEAREST, printO=False):
+    resized=resize_image(Image.open(input_file), autosave=False, image_mode=image_mode)
+    write_image_text(resized, output_file, printO)
+    print("All done!")
 
-def gif2txt(input_file, output_file, image_mode=Image.LANCZOS):
-    write_gif_text(Image.open(input_file), output_file, image_mode)
+def gif2txt(input_file, output_file, image_mode=Image.Resampling.LANCZOS, printO=False):
+    write_gif_text(Image.open(input_file), output_file, image_mode=image_mode, printO=printO)
+    print("All done!")
 
-#gif2txt("pikapika.gif", "finaltxts/pikapika-ani.txt", image_mode=Image.LANCZOS)
+#gif2txt("uoftlogo.gif", "finaltxts/uoftlogo-ani.txt", image_mode=Image.Resampling.BOX)
+#image2txt("Utoronto_coa.png","finaltxts/utlogo-static.txt", image_mode=Image.Resampling.BOX)
