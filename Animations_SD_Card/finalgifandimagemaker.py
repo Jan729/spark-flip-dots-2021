@@ -9,10 +9,10 @@ import sys
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-def resize_image(image, filename="", autosave=True):
+def resize_image(image, filename="", autosave=True, image_mode=Image.NEAREST):
     height = image.height
     width = image.width
-    resized=image.resize((32,32), Image.NEAREST)
+    resized=image.resize((32,32), image_mode)
     if autosave:
         resized.save(filename)
     return resized
@@ -49,7 +49,7 @@ def write_image_text(image, filename, printO=False, fix=True, autoclose=True, fi
         f.close()
     #print(count)
 
-def scale_gif(path, scale, new_path=None):
+def scale_gif(path, scale, new_path=None, image_mode=Image.LANCZOS):
     gif = Image.open(path)
     if not new_path:
         new_path = path
@@ -59,17 +59,17 @@ def scale_gif(path, scale, new_path=None):
         'background': gif.info.get('background', 223),
         'extension': gif.info.get('extension', (b'NETSCAPE2.0'))
     }
-    new_frames = get_new_frames(gif, scale)
+    new_frames = get_new_frames(gif, scale, image_mode=image_mode)
     save_new_gif(new_frames, old_gif_information, new_path)
 
-def get_new_frames(gif, scale):
+def get_new_frames(gif, scale, image_mode=Image.LANCZOS):
     new_frames = []
     actual_frames = gif.n_frames
     for frame in range(actual_frames):
         gif.seek(frame)
         new_frame = Image.new('RGBA', gif.size)
         new_frame.paste(gif)
-        new_frame=new_frame.resize(scale, Image.LANCZOS)
+        new_frame=new_frame.resize(scale, image_mode)
         new_frames.append(new_frame)
     return new_frames
 
@@ -82,8 +82,8 @@ def save_new_gif(new_frames, old_gif_information, new_path):
                        background = old_gif_information['background'],
                        extension = old_gif_information['extension'])
 
-def write_gif_text(gif, filename, delay=9, printO=False, fix=True):
-    new_frames=get_new_frames(gif, (32,32))
+def write_gif_text(gif, filename, delay=9, printO=False, fix=True, image_mode=Image.LANCZOS):
+    new_frames=get_new_frames(gif, (32,32), image_mode=image_mode)
     #delay=gif.info.get('duration')
     if delay==13:
         delay=12
@@ -100,10 +100,11 @@ def write_gif_text(gif, filename, delay=9, printO=False, fix=True):
         f.close()
 
 
-def image2txt(input_file, output_file):
-    resized=resize_image(Image.open(input_file), autosave=False)
+def image2txt(input_file, output_file, image_mode=Image.NEAREST):
+    resized=resize_image(Image.open(input_file), autosave=False, Image_mode=image_mode)
     write_image_text(resized, output_file)
 
-def gif2txt(input_file, output_file):
-    write_gif_text(Image.open(input_file), output_file)
+def gif2txt(input_file, output_file, image_mode=Image.LANCZOS):
+    write_gif_text(Image.open(input_file), output_file, image_mode)
 
+#gif2txt("pikapika.gif", "finaltxts/pikapika-ani.txt", image_mode=Image.LANCZOS)
