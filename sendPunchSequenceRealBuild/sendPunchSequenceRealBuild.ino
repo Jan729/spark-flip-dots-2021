@@ -28,6 +28,9 @@ CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
 
 boolean sendSingleColourPattern = true; // set this to false if you want the shaded pattern
 
+// WARNING: the serial print image orientation is different than the led display
+// leds[0][0] is on the bottom left corner of the display, but sendPunchSequence() sends the bottom rows of
+// pixels first, which means the rows at the bottom of the display get serial.printed before the rows at the top of the display
 void printLeadingZeroes(byte var) {
   for (int i = 0; i < 7; i++) {
     Serial.write((var >> i) & 1 ? '1' : '0');
@@ -110,6 +113,7 @@ void generateShadedPunchPattern(byte *patternBuffer)
             }
         }
 
+        // compress the shadedPatternRow into bytes and store the bytes into the patternBuffer
         for (int i = 0; i < NUM_LEDS_PER_STRIP * ROWS_PER_SHADED_PIXEL; i++)
         {
             if (shadedPatternRow[i] == 1)
