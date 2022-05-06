@@ -111,5 +111,5 @@ def gif2txt(input_file, output_file, image_mode=Image.Resampling.LANCZOS, printO
     write_gif_text(Image.open(input_file), output_file, image_mode=image_mode, printO=printO)
     print("All done!")
 
-#gif2txt("uoftlogo.gif", "finaltxts/uoftlogo-ani.txt", image_mode=Image.Resampling.BOX)
+gif2txt("splash_XS_frame_data.gif", "splash_XS_frame_data.txt", image_mode=Image.Resampling.BOX)
 #image2txt("Utoronto_coa.png","finaltxts/utlogo-static.txt", image_mode=Image.Resampling.BOX)
