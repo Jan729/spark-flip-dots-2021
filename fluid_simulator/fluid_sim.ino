@@ -5,7 +5,10 @@
 
 // Needs both Natasha's rotary encoder code and Reece's microsd card code
 
+// Warning: Don't put underscores in the file names! File will fail to open.
+
 #include <FastLED.h>
+#include <SD.h>
 
 #define NUM_STRIPS 32
 #define NUM_LEDS_PER_STRIP 32
@@ -20,7 +23,7 @@
 
 #define CLEAR_PIN 18
 
-#define CS_PIN 57
+#define CS_PIN 53
 
 uint8_t vertical = 0;
 String Vertical;
@@ -64,69 +67,6 @@ void updateValueV(int delta)
     return;
 }
 
-void setup()
-{
-
-    pinMode(ENCODER_CLK_H, INPUT);
-    pinMode(ENCODER_DT_H, INPUT);
-    pinMode(ENCODER_CLK_V, INPUT);
-    pinMode(ENCODER_DT_V, INPUT);
-    pinMode(ENCODER_CLK_C, INPUT);
-    pinMode(ENCODER_DT_C, INPUT);
-
-    // Clear button will interrupt animations and clear display
-    pinMode(CLEAR_PIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(CLEAR_PIN), HandleClearButton, LOW);
-
-    // tell FastLED there's 32 WS2812B leds on pins 10-41
-    FastLED.addLeds<WS2812B, 22, GRB>(leds[0], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 23, GRB>(leds[1], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 24, GRB>(leds[2], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 25, GRB>(leds[3], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 26, GRB>(leds[4], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 27, GRB>(leds[5], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 28, GRB>(leds[6], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 29, GRB>(leds[7], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 30, GRB>(leds[8], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 31, GRB>(leds[9], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 32, GRB>(leds[10], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 33, GRB>(leds[11], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 34, GRB>(leds[12], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 35, GRB>(leds[13], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 36, GRB>(leds[14], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 37, GRB>(leds[15], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 38, GRB>(leds[16], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 39, GRB>(leds[17], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 40, GRB>(leds[18], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 41, GRB>(leds[19], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 42, GRB>(leds[20], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 43, GRB>(leds[21], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 44, GRB>(leds[22], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 45, GRB>(leds[23], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 46, GRB>(leds[24], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 47, GRB>(leds[25], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 48, GRB>(leds[26], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 49, GRB>(leds[27], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 50, GRB>(leds[28], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 51, GRB>(leds[29], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 52, GRB>(leds[30], NUM_LEDS_PER_STRIP);
-    FastLED.addLeds<WS2812B, 53, GRB>(leds[31], NUM_LEDS_PER_STRIP);
-
-    Serial.begin(9600);
-    Serial.println("Serial start");
-    if (!SD.begin(CS_PIN)) {
-        Serial.println("Card initialization failed!");
-        while (true);
-    }
-
-    Serial.println("initialization done.");
-
-    Serial.println("Files in the card:");
-    root = SD.open("/");
-    printDirectory(root, 0);
-    Serial.println("");
-}
-
 void ReadHorizontalEncoder()
 {
     int clk_H = digitalRead(ENCODER_CLK_H);
@@ -156,19 +96,6 @@ void updateRotaryValue(int delta)
     }
 }
 
-void loop()
-{
-    if (shouldClearDisplay)
-    {
-        clearDisplay();
-        shouldClearDisplay = false;
-        lastActive = millis();
-    }
-
-    FluidSim();
-
-}
-
 #define FLUID_SIM_TIMER 100000 // total time to display fluid sim
 #define FRAMES_PER_SPLASH 7 // frames for one wave period
 // each splash loop starts at the same position to make the animation appear continuous
@@ -194,30 +121,30 @@ void FluidSim()
         
         switch(splashiness) {
             case 0 ... 4:
-                playAnimationFile(splash_flat_frame_data, frameDelay); //splashy_flat
+                playAnimationFile("splashFlat.txt", frameDelay);
                 break;
             case 5 ... 8:
-                playAnimationFile(splash_xs_frame_data, frameDelay); //splash_xs_frame_data
+                playAnimationFile("splashXS.txt", frameDelay);
                 break;
             case 9 ... 12:
-                playAnimationFile(splash_s_frame_data, frameDelay); //splash_s_frame_data
+                playAnimationFile("splashS.txt", frameDelay);
                 break;
             case 13 ... 16:
-                playAnimationFile(splash_m_frame_data, frameDelay); //splash_m_frame_data
+                playAnimationFile("splashM.txt", frameDelay);
                 break;
             case 17 ... 20:
-                playAnimationFile(splash_l_frame_data, frameDelay); //splash_l_frame_data
+                playAnimationFile("splashL.txt", frameDelay); //splash_l_frame_data
                 break;
             case 21 ... 24:
-                playAnimationFile(splash_xl_frame_data, frameDelay); //splash_xl_frame_data
+                playAnimationFile("splashXL.txt", frameDelay); //splash_xl_frame_data
                 break;
             case 25 ... 31:
-                playAnimationFile(splash_xxl_frame_data, frameDelay);
+                playAnimationFile("splashXXL.txt", frameDelay);
                 break;
         }
 
         // make the wave appear to diminish as time passes
-        horizontal--;
+        horizontal-=2;
     }
 
     detachInterrupt(digitalPinToInterrupt(ENCODER_DT_H));
@@ -226,13 +153,13 @@ void FluidSim()
 
 void playAnimationFile(String filename, int delay) {
     File textFile = SD.open(filename);
+
     if(textFile){
-        Serial.print(filename);
-        Serial.print(" opened!");
-        Serial.println();
         showBytes(textFile, delay);
     } else {
-        Serial.println("Error: file not found");
+        Serial.print("Error: failed to open ");
+        Serial.print(filename);
+        Serial.println();
     }
 }
 
@@ -295,5 +222,82 @@ void showBytes(File f, int del){
   FastLED.show();
   }
   Serial.println("DOne displaying!");
+}
+
+
+void setup()
+{
+
+    pinMode(ENCODER_CLK_H, INPUT);
+    pinMode(ENCODER_DT_H, INPUT);
+    pinMode(ENCODER_CLK_V, INPUT);
+    pinMode(ENCODER_DT_V, INPUT);
+    pinMode(ENCODER_CLK_C, INPUT);
+    pinMode(ENCODER_DT_C, INPUT);
+
+    // Clear button will interrupt animations and clear display
+    pinMode(CLEAR_PIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(CLEAR_PIN), HandleClearButton, LOW);
+
+    // tell FastLED there's 32 WS2812B leds on pins 10-41
+    FastLED.addLeds<WS2812B, 22, GRB>(leds[0], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 23, GRB>(leds[1], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 24, GRB>(leds[2], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 25, GRB>(leds[3], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 26, GRB>(leds[4], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 27, GRB>(leds[5], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 28, GRB>(leds[6], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 29, GRB>(leds[7], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 30, GRB>(leds[8], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 31, GRB>(leds[9], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 32, GRB>(leds[10], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 33, GRB>(leds[11], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 34, GRB>(leds[12], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 35, GRB>(leds[13], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 36, GRB>(leds[14], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 37, GRB>(leds[15], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 38, GRB>(leds[16], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 39, GRB>(leds[17], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 40, GRB>(leds[18], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 41, GRB>(leds[19], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 42, GRB>(leds[20], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 43, GRB>(leds[21], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 44, GRB>(leds[22], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 45, GRB>(leds[23], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 46, GRB>(leds[24], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 47, GRB>(leds[25], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 48, GRB>(leds[26], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, 49, GRB>(leds[27], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, A0, GRB>(leds[28], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, A1, GRB>(leds[29], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, A2, GRB>(leds[30], NUM_LEDS_PER_STRIP);
+    FastLED.addLeds<WS2812B, A3, GRB>(leds[31], NUM_LEDS_PER_STRIP);
+
+    Serial.begin(9600);
+    Serial.println("Serial start");
+    if (!SD.begin(CS_PIN)) {
+        Serial.println("Card initialization failed!");
+        while (true);
+    }
+
+    Serial.println("initialization done.");
+
+    Serial.println("Files in the card:");
+    root = SD.open("/");
+    printDirectory(root, 0);
+    Serial.println("");
+}
+
+void loop()
+{
+    // if (shouldClearDisplay)
+    // {
+    //     clearDisplay();
+    //     shouldClearDisplay = false;
+    //     lastActive = millis();
+    // }
+
+    FluidSim();
+
 }
 
