@@ -1,167 +1,128 @@
 // Simulation: https://wokwi.com/arduino/projects/321524485770445396
 
-// If you stop drawing and wait for IDLE_TIMEOUT (ms), the dummy animation function will start
-// Press the red Clear button to clear the animation and draw agains
-
-/* Referenced from Natasha's code
-Leftmost encoder is for vertical movement, the middle is for horizontal
-and the last one is for colour picking. Refer to the Notion
-(API Map ->Read Colour -> Open) for the colour wheel
-*/
+// enter the date and time manually (cuz we don't have internet access to check time automatically)
+// then start the simulation
 
 #include <FastLED.h>
 
 #define NUM_STRIPS 32
 #define NUM_LEDS_PER_STRIP 32
 
-// #define ENCODER_CLK_V 6
-// #define ENCODER_DT_V 7
-// #define ENCODER_CLK_H 2
-// #define ENCODER_DT_H 3
+int hour = 12;
+int minute = 20;
+#define MONTH 5
+#define DAY 14
+#define DAY_OF_WEEK "SAT"
+#define DAY_OF_WEEK_LEN 8
+#define CLOCK_GREEN CRGB(0xFF66FF66)
 
-// #define ENCODER_CLK_C 5
-// #define ENCODER_DT_C 4
+bool playEtchASketch = false; // wired to start/clear interrupt button
 
-// #define CLEAR_PIN 18
-
-// uint8_t vertical = 0;
-// String Vertical;
-// uint8_t horizontal = 0;
-// String Horizontal;
-
-// int vCounter = 0;
-// int hCounter = 0;
-
-// int prevClk_H = HIGH;
-// int prevClk_V = HIGH;
-// int prevClk_C = HIGH;
-
-// int counter = 0;
-
-// variables used in interrupt service routines should be volatile
-// cuz it prevents weird stuff from happening
-// volatile bool playEtchASketch = true;
-// volatile bool shouldClearDisplay = false;
-// int prevVertical = 0;
-// int prevHorizontal = 0;
-// volatile unsigned long lastActive = millis();
-// unsigned long IDLE_TIMEOUT = 2000;
-
-int hour = 0;
-int minute = 0;
-#define MONTH 2
-#define DAY 10
-
-static const uint32_t numbers[10][49] PROGMEM = {
-{ // 0
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000
-}, 
-{ // 1
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000
-},
-{ // 2
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000
-},
-{ // 3
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000
-},
-{ // 4
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000
-},
-{ // 5
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000
-},
-{ // 6
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000
-},
-{ // 7
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000
-},
-{ // 8
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000
-},
-{ // 9
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff66ff66, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff66ff66, 0xff66ff66, 0xff66ff66, 0xff000000, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff66ff66, 0xff000000, 
-0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000
-}
+// 5x7 digits, MSB is top left, LSB is bottom right, every 5 bits is one row from left to right
+const String nums[] = {
+  "01110100011000100000100011000101110", //0
+  "00000000010000100000000010000100000", //1
+  "01110000010000101110100001000001110", //2
+  "01110000010000101110000010000101110", //3
+  "10001100011000101110000010000100000", //4
+  "01110100001000001110000010000101110", //5
+  "01110100001000001110100011000101110", //6
+  "01110000010000100000000010000100000", //7
+  "01110100011000101110100011000101110", //8
+  "01110100011000101110000010000100000", //9
 };
-
 
 // leds[0][0] is the bottom left corner
 // leds[0][31] is the bottom right corner
 // leds[31][0] is the top left corner
 CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
 
-// void updateValueH(int delta)
-// {
-//     horizontal = constrain(horizontal + delta, 0, 31);
-//     return;
-// }
+uint32_t letToBin(char a){//returns top right to bottom left, with LSB botleft, MSB topright, top to bottom then left to right
+  switch(a){
+    case 'a': case 'A':
+      return 0b0111110100101001010001111;
+    case 'b': case 'B':
+      return 0b0000001010101011000111111;
+    case 'c': case 'C':
+      return 0b0101010001100011000101110;
+    case 'd': case 'D':
+      return 0b0000001110100011000111111;
+    case 'e': case 'E':
+      return 0b1000110101101011010111111;
+    case 'f': case 'F':
+      return 0b1000010100101001010011111;
+    case 'g': case 'G':
+      return 0b0010000110101011000101110;
+    case 'h': case 'H':
+      return 0b1111100100001000010011111;
+    case 'i': case 'I':
+      return 0b1000110001111111000110001;
+    case 'j': case 'J':
+      return 0b1000011110100011000110110;
+    case 'k': case 'K':
+      return 0b0000010001010100010011111;
+    case 'l': case 'L':
+      return 0b0000000001000010000111111;
+    case 'm': case 'M':
+      return 0b0111110000111001000001111;
+    case 'n': case 'N':
+      return 0b1111100010001000100011111;
+    case 'o': case 'O':
+      return 0b0111010001100011000101110;
+    case 'p': case 'P':
+      return 0b0100010100101001010011111;
+    case 'q': case 'Q':
+      return 0b0110110010101011000101110;
+    case 'r': case 'R':
+      return 0b0101110100101001010011111;
+    case 's': case 'S':
+      return 0b1011010101101011010101101;
+    case 't': case 'T':
+      return 0b1000010000111111000010000;
+    case 'u': case 'U':
+      return 0b1111000001000010000111110;
+    case 'v': case 'V':
+      return 0b1110000010000010001011100;
+    case 'w': case 'W':
+      return 0b1111000001001110000111110;
+    case 'x': case 'X':
+      return 0b1000101010001000101010001;
+    case 'y': case 'Y':
+      return 0b1000001000001110100010000;
+    case 'z': case 'Z':
+      return 0b1000111001101011001110001;
+    case ' ':
+      return 0;
+    default:
+      return 0b0100010100101011000001000;
 
-// void updateValueV(int delta)
-// {
-//     vertical = constrain(vertical + delta, 0, 31);
-//     return;
-// }
+  }
+}
+
+void plotLetter(uint32_t let, int topRow, int leftCol) {
+  Serial.println(let);
+  uint32_t letter = let;
+  for(int col=leftCol; col>leftCol-5; col--) {
+    for(int row=topRow; row>topRow-5; row--) {
+      Serial.print(letter & 1UL);
+      leds[row][col] = letter & 1UL ? CLOCK_GREEN : CRGB::Black;
+      letter >> 1UL;
+    }
+  }
+}
+
+// 'day' should be a three char string eg, 'MON', 'TUE'
+// i'm too lazy to validate input
+void plotDayOfWeek() {
+  int topRow = 29;
+  int leftMostCol = 8;
+  String day = DAY_OF_WEEK;
+
+  for(int i=0; i<=2; i++) { // plot letters from left to right
+    plotLetter(letToBin(day[i]), topRow, leftMostCol + i*6);
+  }
+  FastLED.show();
+}
 
 void setup()
 {
@@ -214,123 +175,15 @@ void setup()
     // leds[0][0] = CRGB::Red;
     // FastLED.show();
 
-    // tell arduino what time it is
-    // because we don't have internet access rn
-    // Serial.begin(9600);
-    // Serial.print("Enter hour: ");
-    // while (Serial.available()==0){}             // wait for user input
-    // hour = Serial.parseInt();     
-    // Serial.print("Enter minute: ");
-    // minute = Serial.parseInt();
+    Serial.begin(9600);
 }
-
-// void ReadVerticalEncoder()
-// {
-//     int clk_V = digitalRead(ENCODER_CLK_V);
-//     if ((clk_V != prevClk_V) && (clk_V == LOW))
-//     {
-//         int dtV = digitalRead(ENCODER_DT_V);
-//         int deltaV = dtV == HIGH ? 1 : -1;
-//         updateValueV(deltaV);
-//         updateColour();
-//     }
-//     prevClk_V = clk_V;
-// }
-
-// void ReadHorizontalEncoder()
-// {
-//     int clk_H = digitalRead(ENCODER_CLK_H);
-//     if ((clk_H != prevClk_H) && (clk_H == LOW))
-//     {
-//         int dtH = digitalRead(ENCODER_DT_H);
-//         int deltaH = dtH == HIGH ? 1 : -1;
-//         updateValueH(deltaH);
-//         updateColour();
-//     }
-//     prevClk_H = clk_H;
-// }
-
-// void ReadColour()
-// {
-//     int clk_C = digitalRead(ENCODER_CLK_C);
-//     if ((clk_C != prevClk_C) && (clk_C == LOW))
-//     {
-//         int dtC = digitalRead(ENCODER_DT_C);
-//         int deltaC = dtC == HIGH ? 1 : -1;
-//         updateRotaryValue(deltaC);
-//     }
-//     prevClk_C = clk_C;
-// }
-
-// void updateRotaryValue(int delta)
-// {
-//     if ((counter <= 0) && (delta < 0))
-//     { // going left
-//         counter = 19;
-//     }
-//     else if ((counter >= 19) && (delta > 0))
-//     { // going right
-//         counter = 0;
-//     }
-//     else
-//     { // add like normal
-//         counter = counter + delta;
-//     }
-// }
-// void updateColour()
-// {
-//     if ((((counter == 19) || (counter == 0)) || (counter == 1)) || (counter == 2))
-//     {
-//         leds[vertical][horizontal] = CRGB::Red;
-//         FastLED.show();
-//         // leds[i] = FF595E; from array of leds (leds is the name)
-//     }
-//     else if (((counter == 3) || (counter == 4)) || (counter == 5))
-//     {
-//         leds[vertical][horizontal] = CRGB::LightGreen;
-//         FastLED.show();
-//         // leds[i] = 8AC926;
-//     }
-//     else if ((((counter == 6) || (counter == 7)) || (counter == 8)) || (counter == 9))
-//     {
-//         leds[vertical][horizontal] = CRGB::Yellow;
-//         FastLED.show();
-//         // leds[i] = FFCA3A;
-//     }
-
-//     else if (((counter == 10) || (counter == 11)) || (counter == 12))
-//     {
-//         leds[vertical][horizontal] = CRGB::MediumPurple;
-//         FastLED.show();
-//         // leds[i] = 9478BA;
-//     }
-//     else if (((counter == 13) || (counter == 14)) || (counter == 15))
-//     {
-//         leds[vertical][horizontal] = CRGB::Black;
-//         FastLED.show();
-//         // leds[i] = 000000;
-//     }
-//     else if (((counter == 16) || (counter == 17)) || (counter == 18))
-//     {
-//         leds[vertical][horizontal] = CRGB::SkyBlue;
-//         FastLED.show();
-//         // leds[i] = 1C90D9;
-//     }
-//     else
-//     {
-//         leds[vertical][horizontal] = CRGB::Red;
-//         FastLED.show();
-//         // leds[i] = FF595E;
-//     }
-//     lastActive = millis();
-// }
 
 void loop()
 {
     // if (shouldClearDisplay)
     // {
-    //     ClearDisplay();
-    //     shouldClearDisplay = false;
+    //     clearDisplay();
+    //     shouldclearDisplay = false;
     //     lastActive = millis();
     // }
 
@@ -343,19 +196,10 @@ void loop()
     // }
     // else
     // {
+        clearDisplay();
         PlayAnimations();
     // }
 }
-
-// void CheckIfIdle()
-// {
-
-//     if (millis() - lastActive > IDLE_TIMEOUT)
-//     {
-//         ClearDisplay();
-//         playEtchASketch = false;
-//     }
-// }
 
 void PlayAnimations()
 {
@@ -363,23 +207,11 @@ void PlayAnimations()
     showClock();
 }
 
-// void HandleClearButton()
-// {
-//     playEtchASketch = true;
-//     shouldClearDisplay = true;
-// }
-
-// void ClearDisplay()
-// {
-//     for (int row = 0; row < NUM_STRIPS; row++)
-//     {
-//         for (int col = 0; col < NUM_LEDS_PER_STRIP; col++)
-//         {
-//             leds[row][col] = CRGB::CRGB::Black;
-//         }
-//     }
-//     FastLED.show();
-// }
+void clearDisplay()
+{
+    FastLED.clear();
+    FastLED.show();
+}
 
 void showClock() {
 
@@ -388,32 +220,33 @@ void showClock() {
     int hourSmall = hour % 10;
     int minuteBig = minute / 10;
     int minuteSmall = minute % 10;
-    CRGB appleGreen = CRGB(0xFF66FF66);
 
-    plotDateSlash(appleGreen);
+    plotDateSlash();
     plotDate();
+    plotDayOfWeek();
 
     while(true) { // TODO: how long to leave the clock display up for?
-    // TODO adjust time dynamically based on millis()
+    // TODO adjust time dynamically based on millis(). if you play animations in between
+    // showClock() calls, the clock will start at the same time, every time
 
-    plotDigit(hourBig, 11, 2);
-    plotDigit(hourSmall, 11, 8);
-    plotDigit(minuteBig, 11, 16);
-    plotDigit(minuteSmall, 11, 22);
-    plotColon(13, 15, appleGreen);
+    plotDigit(hourBig, 18, 2);
+    plotDigit(hourSmall, 18, 8);
+    plotDigit(minuteBig, 18, 16);
+    plotDigit(minuteSmall, 18, 22);
+    plotColon(16, 15, CLOCK_GREEN);
 
-    // if (playEtchASketch)
-    // {
-    //     return;
-    // }
+    if (playEtchASketch)
+    {
+        return;
+    }
 
     // UNCOMMENT THIS LOOP FOR A HOURS:MINUTES clock
-    // LEAVE COMMENTED OUT FOR A MINUTE:SECONDS clock
-    //for (int sec = 0; sec <= 59; sec++) {
-        delay(900); // 1 sec for testing 
+    // COMMENT OUT THIS LOOP FOR A MINUTE:SECONDS clock
+    for (int sec = 0; sec <= 59; sec++) {
+        delay(900);
         plotColon(13, 15, CRGB::Black); // blink colon
         delay(100);
-    //}
+    }
 
 
     // set max time to 23:59
@@ -445,24 +278,16 @@ void showClock() {
     }
 }
 
-// tip: the numbers are only 5x7, but you can overlap the numbers array images
+// tip: the numbers are only 5x7, but you can overlap the 7x7 numbers array images
 // by one col because the first and last col is just black
 void plotDigit(int number, int topLeftRow, int topLeftCol) {
     int i = 0;
-    // simulator loop
-    for(int row = topLeftRow + 6; row >= topLeftRow; row--) {
-        for(int col = topLeftCol; col <= topLeftCol + 6; col++) {
-            leds[row][col] = CRGB(pgm_read_dword(&(numbers[number][i])));
+    for(int row = topLeftRow; row > topLeftRow - 7; row--) {
+        for(int col = topLeftCol; col < topLeftCol + 5; col++) {
+            leds[row][col] = nums[number].charAt(i) == '1' ? CLOCK_GREEN : CRGB::Black;
             i++;
         }
     }
-    // IRL loop
-    // for(int row = topLeftRow; row < topLeftRow + 6; row++) {
-    //     for(int col = topLeftCol; col < topLeftCol + 6; col++) {
-    //         leds[row][col] = CRGB(pgm_read_dword(&(numbers[number][i])));
-    //         i++;
-    //     }
-    // }
     FastLED.show();
 }
 
@@ -472,23 +297,22 @@ void plotColon(int row, int col, CRGB colour) {
     FastLED.show();
 }
 
-// FIXME fix orientation for IRL display
-void plotDateSlash(CRGB colour) {
-    leds[8][16] = colour;
-    leds[7][16] = colour;
-    leds[6][16] = colour;
-    leds[5][15] = colour;
-    leds[4][15] = colour;
-    leds[3][15] = colour;
-    leds[2][14] = colour;
-    leds[1][14] = colour;
-    leds[0][14] = colour;
+void plotDateSlash() {
+    leds[10][16] = CLOCK_GREEN;
+    leds[9][16] = CLOCK_GREEN;
+    leds[8][16] = CLOCK_GREEN;
+    leds[7][15] = CLOCK_GREEN;
+    leds[6][15] = CLOCK_GREEN;
+    leds[5][15] = CLOCK_GREEN;
+    leds[4][14] = CLOCK_GREEN;
+    leds[3][14] = CLOCK_GREEN;
+    leds[2][14] = CLOCK_GREEN;
     FastLED.show();
 }
 
 void plotDate() {
-    plotDigit(DAY / 10, 0, 18);
-    plotDigit(DAY % 10, 0, 24);
-    plotDigit(MONTH / 10, 0, 0);
-    plotDigit(MONTH % 10, 0, 6);
+    plotDigit(DAY / 10, 9, 19);
+    plotDigit(DAY % 10, 9, 25);
+    plotDigit(MONTH / 10, 9, 1);
+    plotDigit(MONTH % 10, 9, 7);
 }
