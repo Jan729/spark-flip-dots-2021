@@ -99,14 +99,13 @@ uint32_t letToBin(char a){//returns top right to bottom left, with LSB botleft, 
   }
 }
 
+// plot 5x5 letter
 void plotLetter(uint32_t let, int topRow, int leftCol) {
-  Serial.println(let);
   uint32_t letter = let;
-  for(int col=leftCol; col>leftCol-5; col--) {
-    for(int row=topRow; row>topRow-5; row--) {
-      Serial.print(letter & 1UL);
+  for(int col=leftCol; col <= leftCol + 4; col++) {
+    for(int row=topRow-4; row <= topRow; row++) {
       leds[row][col] = letter & 1UL ? CLOCK_GREEN : CRGB::Black;
-      letter >> 1UL;
+      letter = letter >> 1UL;
     }
   }
 }
@@ -229,11 +228,10 @@ void showClock() {
     // TODO adjust time dynamically based on millis(). if you play animations in between
     // showClock() calls, the clock will start at the same time, every time
 
-    plotDigit(hourBig, 18, 2);
-    plotDigit(hourSmall, 18, 8);
-    plotDigit(minuteBig, 18, 16);
-    plotDigit(minuteSmall, 18, 22);
-    plotColon(16, 15, CLOCK_GREEN);
+    plotDigit(hourBig, 21, 2);
+    plotDigit(hourSmall, 21, 8);
+    plotDigit(minuteBig, 21, 16);
+    plotDigit(minuteSmall, 21, 22);
 
     if (playEtchASketch)
     {
@@ -243,8 +241,9 @@ void showClock() {
     // UNCOMMENT THIS LOOP FOR A HOURS:MINUTES clock
     // COMMENT OUT THIS LOOP FOR A MINUTE:SECONDS clock
     for (int sec = 0; sec <= 59; sec++) {
+        plotColon(16, 14, CLOCK_GREEN);
         delay(900);
-        plotColon(13, 15, CRGB::Black); // blink colon
+        plotColon(16, 14, CRGB::Black); // blink colon
         delay(100);
     }
 
@@ -278,8 +277,6 @@ void showClock() {
     }
 }
 
-// tip: the numbers are only 5x7, but you can overlap the 7x7 numbers array images
-// by one col because the first and last col is just black
 void plotDigit(int number, int topLeftRow, int topLeftCol) {
     int i = 0;
     for(int row = topLeftRow; row > topLeftRow - 7; row--) {
