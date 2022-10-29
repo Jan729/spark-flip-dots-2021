@@ -11,11 +11,11 @@
 #define ENCODER_DT_H 4
 #define ENCODER_CLK_C 3
 #define ENCODER_DT_C 5
-#define CLEAR_PIN 18
+#define CLEAR_PIN 19
 #define NUMFILES 34
 
-uint8_t vertical = 31;
-uint8_t horizontal = 31;
+uint8_t vertical = 16;
+uint8_t horizontal = 16;
 
 int vCounter = 0;
 int hCounter = 0;
@@ -26,12 +26,15 @@ int prevClk_C = HIGH;
 
 int counter = 0;
 
+int prevBtn = HIGH;
+long btnDebounceTimer = 0;
+
 volatile bool playEtchASketch = true;
 volatile bool shouldClearDisplay = false;
-int prevVertical = 0;
-int prevHorizontal = 0;
+int prevVertical = 16;
+int prevHorizontal = 16;
 volatile unsigned long lastActive = millis();
-unsigned long IDLE_TIMEOUT = 30000;
+unsigned long IDLE_TIMEOUT = 60000;
 
 CRGB colours[20];
 bool black = false;
@@ -49,6 +52,12 @@ void clearDisplay();
 //gol decl
 void gameOfLife(int seed, int tDelay);
 void gameOfLife();
-
+// constrain(horizontal + delta, 0, 31);
+int wrap_constrain(int in, int lo, int hi){
+  return constrain(in, lo, hi);
+  if(in > lo && in < hi) return in;
+  else if (in < lo) return in +32;
+  else return in - 32; 
+}
 #endif
 

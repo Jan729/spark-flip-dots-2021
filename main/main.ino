@@ -8,7 +8,8 @@
 
 void setup() {
   pinMode(CLEAR_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(CLEAR_PIN), HandleClearButton, RISING);
+  // attachInterrupt(digitalPinToInterrupt(CLEAR_PIN), HandleClearButton, RISING);
+  
   pinMode(ENCODER_CLK_H, INPUT);
   pinMode(ENCODER_DT_H, INPUT);
   pinMode(ENCODER_CLK_V, INPUT);
@@ -53,15 +54,15 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, 47>(leds[30], 32);
   FastLED.addLeds<NEOPIXEL, 46>(leds[31], 32);
   SD.begin(CS_PIN);
-  FastLED.setBrightness(45);
+  FastLED.setBrightness(125);
 
   //setup colours array
   int hue = 12;
-  for (int i = 0; i < 19; i++) {
+  for (int i = 0; i < 20; i++) {
     colours[i] = CHSV(hue * i, 255, 255);
   }
 
-  colours[19] = CRGB::Black;
+  // colours[19] = CRGB::Black;
   // set board to black
   for (int i = 0; i < NUM_STRIPS; i++) {
     for (int k = 0; k < NUM_LEDS_PER_STRIP; k++) {
@@ -69,14 +70,16 @@ void setup() {
     }
   }
 
-  leds[31][31] = CRGB::Red;
+  //start in middle
+  leds[16][16] = CRGB::Red;
   FastLED.show();
   //REMOVE THIS
   clearDisplay();
-  pong();
+  // pong();
 }
 
 void loop() {
+  HandleClearButton(); //rpress reset to change from idle to rainbow
   if (shouldClearDisplay)
   {
     clearDisplay();
@@ -94,18 +97,20 @@ void loop() {
   }
   else
   {
-    int idleOption = random(0, 2);
-    switch (idleOption) {
-      case 0:
-        showRandomAnimation();
-        break;
-      case 1:
-        gameOfLife(1500,1500);
-        break;
-      case 2:
-        run_shader();
-        break;
-    }
+    run_shader();
+    // int idleOption = random(0, 3);
+    // switch (idleOption) {
+    //   case 0:
+    //     // showRandomAnimation();
+    //     run_shader();
+    //     break;
+    //   case 1:
+    //     gameOfLife(1500,1500);
+    //     break;
+    //   case 2:
+    //     run_shader();
+    //     break;
+    // }
   }
 }
 
@@ -144,20 +149,34 @@ void clearDisplay() {
   FastLED.show();
 }
 
+
+
 void HandleClearButton()
 {
-  playEtchASketch = true;
-  shouldClearDisplay = true;
+  const int debounceTime =250;
+
+  if(prevBtn == LOW && digitalRead(CLEAR_PIN)==HIGH){ //on posedge, start timer
+    btnDebounceTimer = millis();
+    prevBtn = HIGH;
+  }
+  
+  else if(prevBtn == HIGH && digitalRead(CLEAR_PIN)==LOW && millis()-btnDebounceTimer > debounceTime){
+      playEtchASketch = true;
+      shouldClearDisplay = true;
+      prevBtn = LOW;
+
+  }
+  
 }
 
 void updateValueH(int delta) {
-  horizontal = constrain(horizontal + delta, 0, 31);
+  horizontal = wrap_constrain(horizontal + delta, 0, 31);
   return;
 }
 
 //updates the vertical location of the "cursor" and bounds it
 void updateValueV(int delta) {
-  vertical = constrain(vertical + delta, 0, 31);
+  vertical = wrap_constrain(vertical + delta, 0, 31);
   return;
 }
 
