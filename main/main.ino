@@ -115,23 +115,36 @@ void loop() {
 }
 
 void BlinkEtchASketchCursor(){
+    int clk_div = 10;
     cursor_counter++;
-    if (cursor_counter % switch_cursor == 0) {
-      if (!black) {
-        leds[vertical][horizontal] = CRGB::Black;
-        black = true;
-      }
-      else {
-        if (counter == 19) {
-          leds[vertical][horizontal].setRGB(255, 20, 147);
-        }
-        else {
-          leds[vertical][horizontal] = colours[counter];
-        }
-        black = false;
-      }
-      FastLED.show(); 
+    
+    if(cursor_counter % 100 > 80){
+      leds[vertical][horizontal] = CRGB::Black;
     }
+    else{
+      leds[vertical][horizontal] = colours[counter];
+    }
+    FastLED.show();
+    
+    // cursor_counter++;
+    // if (cursor_counter % switch_cursor == 0) {
+    //   if (!black) {
+    //     leds[vertical][horizontal] = CRGB::Black;
+    //     black = true;
+    //   }
+    //   else {
+    //     // eraser
+    //     if (counter == 19) {
+    //       leds[vertical][horizontal].setRGB(255, 20, 147);
+    //     }
+    //     // show current color
+    //     else {
+    //       leds[vertical][horizontal] = colours[counter];
+    //     }
+    //     black = false;
+    //   }
+    //   FastLED.show(); 
+    // }
 }
 
 void CheckIfIdle()
@@ -164,9 +177,7 @@ void HandleClearButton()
       playEtchASketch = true;
       shouldClearDisplay = true;
       prevBtn = LOW;
-
   }
-  
 }
 
 void updateValueH(int delta) {

@@ -12,6 +12,8 @@
 #define ENCODER_CLK_C 3
 #define ENCODER_DT_C 5
 #define CLEAR_PIN 19
+#define BTN_BLU_PIN 18
+
 #define NUMFILES 34
 
 uint8_t vertical = 16;
