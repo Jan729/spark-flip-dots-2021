@@ -114,15 +114,46 @@ void loop() {
   }
 }
 
+CRGB vcache[32] ;
+CRGB hcache[32];
+
+int last_vertical, last_horizontal;
 void BlinkEtchASketchCursor(){
     int clk_div = 10;
+    cursorMode cm = CM_XPULSE;
     cursor_counter++;
     
-    if(cursor_counter % 100 > 80){
-      leds[vertical][horizontal] = CRGB::Black;
-    }
-    else{
-      leds[vertical][horizontal] = colours[counter];
+    switch(cm){
+      case CM_BLINK:
+        if(cursor_counter % 100 > 60){
+          leds[vertical][horizontal] = CRGB::Black;
+        }
+        else{
+          leds[vertical][horizontal] = colours[counter];
+        }
+      break;
+      case CM_XPULSE:
+        // for(int i = 0; i < 32 ;i++){
+        //   vcache[i] = leds[horizontal][i]; 
+        //   hcache[i] = leds[i][vertical];
+        // }
+        if(last_horizontal != horizontal || last_vertical!=vertical){
+          //restore last
+          for(int i = 0; i < 32 ;i++){
+          leds[last_vertical][i] =vcache[i];  
+          leds[i][last_horizontal] = hcache[i];
+          //save current
+          vcache[i] = leds[horizontal][i]; 
+          hcache[i] = leds[i][vertical];
+         }
+        }
+
+        for(int i = 0; i < 32 ;i++){
+          leds[vertical][i] = colours[counter];
+          leds[i][horizontal] = colours[counter];
+        }
+
+      break;
     }
     FastLED.show();
     
@@ -202,6 +233,7 @@ void ReadVerticalEncoder() {
     updateColour();
   }
   prevClk_V = clk_V;
+  if(BOT_DRAW) updateValueV(random(-1,2));
 }
 
 //reads horizontal encoder and draws a new pixel depending on input
@@ -215,10 +247,12 @@ void ReadHorizontalEncoder() {
     updateColour();
   }
   prevClk_H = clk_H;
+  if(BOT_DRAW) updateValueH(random(-1,2));
 }
 
 //reads the colour wheel encoder and changes the position of the wheel by +1 or -1
 void ReadColour() {
+
   int clk_C = digitalRead(ENCODER_CLK_C);
   if ((clk_C != prevClk_C) && (clk_C == LOW)) {
     int dtC = digitalRead(ENCODER_DT_C);
@@ -226,6 +260,7 @@ void ReadColour() {
     updateRotaryValue(deltaC);
   }
   prevClk_C = clk_C;
+  if(BOT_DRAW && random(0,10) > 8) updateRotaryValue(random(-1,2));
 }
 
 //updates the position in the colour wheel, makes sure it does not go out of bounds

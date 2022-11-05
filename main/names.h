@@ -13,8 +13,9 @@
 #define ENCODER_DT_C 5
 #define CLEAR_PIN 19
 #define BTN_BLU_PIN 18
-
 #define NUMFILES 34
+
+#define BOT_DRAW 0
 
 uint8_t vertical = 16;
 uint8_t horizontal = 16;
@@ -61,5 +62,11 @@ int wrap_constrain(int in, int lo, int hi){
   else if (in < lo) return in +32;
   else return in - 32; 
 }
+
+enum cursorMode{
+  CM_BLINK,
+  CM_XPULSE
+};
+
 #endif
 
