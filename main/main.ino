@@ -5,6 +5,7 @@
 #include "names.h"
 #include "shader.h"
 #include "fsm.h"
+#include "rotaryEncoder.h"
 
 void setup() {
   pinMode(CLEAR_PIN, INPUT);
@@ -224,15 +225,24 @@ void updateValueV(int delta) {
 
 //reads the vertical encoder and draws a new pixel depending on the input
 void ReadVerticalEncoder() {
-  int clk_V = digitalRead(ENCODER_CLK_V);
-  if ((clk_V != prevClk_V) && (clk_V == LOW)) {
+  // Original setup 
+  // int clk_V = digitalRead(ENCODER_CLK_V);
+  // if ((clk_V != prevClk_V) && (clk_V == LOW)) {
+  //   leds[vertical][horizontal] = colours[counter];
+  //   int dtV = digitalRead(ENCODER_DT_V);
+  //   int deltaV = dtV == HIGH ? 1 : -1;
+  //   updateValueV(deltaV);
+  //   updateColour();
+  // }
+  // prevClk_V = clk_V;
+
+  // Modified setup 
+  int8_t deltaV = read_rotary(ENCODER_DT_V, ENCODER_CLK_V);
+  if (deltaV != 0){
     leds[vertical][horizontal] = colours[counter];
-    int dtV = digitalRead(ENCODER_DT_V);
-    int deltaV = dtV == HIGH ? 1 : -1;
-    updateValueV(deltaV);
+    updateValueV (deltaV);
     updateColour();
   }
-  prevClk_V = clk_V;
   if(BOT_DRAW) updateValueV(random(-1,2));
 }
 
