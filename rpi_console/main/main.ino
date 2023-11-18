@@ -13,33 +13,61 @@ int buf[4];
 char* createStr(char c, int v);
 char* outbuf;
 
-static uint8_t prevNextCode = 0;
-static uint16_t store=0;
+uint8_t prevNextCode1 = 0;
+uint16_t store1=0;
 
-int8_t read_rotary(int pinData, int pinClk) {
-  static int8_t rot_enc_table[] = {0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0};
+uint8_t prevNextCode2 = 0;
+uint16_t store2=0;
 
-  prevNextCode <<= 2;
-  if (digitalRead(HORIZ_CLK)) prevNextCode |= 0x02;
-  if (digitalRead(HORIZ_DAT)) prevNextCode |= 0x01;
-  prevNextCode &= 0x0f;
+int8_t read_rotary1(int pinData, int pinClk) {
+  int8_t rot_enc_table[] = {0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0};
+  // Serial.println("Read Rotary 1");
+  prevNextCode1 <<= 2;
+  if (digitalRead(HORIZ_CLK)) prevNextCode1 |= 0x02;
+  if (digitalRead(HORIZ_DAT)) prevNextCode1 |= 0x01;
+  prevNextCode1 &= 0x0f;
 
    // If valid then store as 16 bit data.
-   if  (rot_enc_table[prevNextCode] ) {
-      store <<= 4;
-      store |= prevNextCode;
+   if  (rot_enc_table[prevNextCode1] ) {
+      // Serial.println("Something happened");
+      store1 <<= 4;
+      store1 |= prevNextCode1;
       //if (store==0xd42b) return 1;
       //if (store==0xe817) return -1;
-      if ((store&0xff)==0x2b) return -1;
-      if ((store&0xff)==0x17) return 1;
+      if ((store1&0xff)==0x2b) return -1;
+      if ((store1&0xff)==0x17) return 1;
    }
+  //  Serial.println("Detec zero happened");
+
    return 0;
 }
 
+// int8_t read_rotary2(int pinData, int pinClk) {
+//   int8_t rot_enc_table[] = {0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0};
+
+//   prevNextCode2 <<= 2;
+//   if (digitalRead(VERT_CLK)) prevNextCode2 |= 0x02;
+//   if (digitalRead(VERT_DAT)) prevNextCode2 |= 0x01;
+//   prevNextCode2 &= 0x0f;
+
+//    // If valid then store as 16 bit data.
+//    if  (rot_enc_table[prevNextCode2] ) {
+//       store2 <<= 4;
+//       store2 |= prevNextCode2;
+//       //if (store==0xd42b) return 1;
+//       //if (store==0xe817) return -1;
+//       if ((store2&0xff)==0x2b) return -1;
+//       if ((store2&0xff)==0x17) return 1;
+//    }
+//    return 0;
+// }
+
 void setup(){
   Serial.begin(9600);
-  Serial1.begin(9600);
-
+  // Serial1.begin(9600);
+  Serial.println("Hello");
+  
+  
   pinMode(HORIZ_CLK, INPUT);
   pinMode(HORIZ_CLK, INPUT_PULLUP);
   pinMode(HORIZ_DAT, INPUT);
@@ -55,8 +83,10 @@ void setup(){
 }
 
 void loop(){
-  static int8_t delta_horiz = read_rotary(HORIZ_DAT, HORIZ_CLK);
-  // int delta_vert = read_rotary(VERT_DAT, VERT_CLK);
+  // Serial.println("Loop Read Rotary");
+
+  int8_t delta_horiz = read_rotary1(HORIZ_DAT, HORIZ_CLK); // if static, optimized out
+  // static int8_t delta_vert = read_rotary2(VERT_DAT, VERT_CLK);
   // int delta_color = read_rotary(COLOR_DAT, COLOR_CLK);
   // int rst_button = digitalRead(RST_BTN);
   // Serial.print("Delta Vertical: ");
@@ -72,13 +102,19 @@ void loop(){
   // buf[3]= rst_button;
   // Serial1.write(buf,4);
   // Serial1.write("#");
-  bool verbose = 0;
+  bool verbose = 1;
    if(verbose||delta_horiz!=0) {
-    Serial1.write(delta_horiz ==0 ? "h0": delta_horiz > 0 ? "h+":"h-");
+    // Serial1.write(delta_horiz ==0 ? "h0": delta_horiz > 0 ? "h+":"h-");
     Serial.print("Delta Horizontal: ");
     Serial.println(delta_horiz);
     
   }
+    //  if(verbose||delta_vert!=0) {
+    // // Serial1.write(delta_horiz ==0 ? "h0": delta_horiz > 0 ? "h+":"h-");
+    // Serial.print("Delta Vertical: ");
+    // Serial.println(delta_vert);
+    
+  // }
     // if(verbose||delta_horiz!=0) Serial1.write(createStr('h', delta_horiz));
   // if(verbose||delta_vert!=0) Serial1.write(createStr('v', delta_vert));
   // if(verbose||delta_color!=0) Serial1.write(createStr('c',delta_color));
