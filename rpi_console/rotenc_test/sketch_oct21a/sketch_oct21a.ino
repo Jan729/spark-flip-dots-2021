@@ -2,10 +2,13 @@
 //
 // Copyright John Main - best-microcontroller-projects.com
 //
-#define CLK 8
-#define 
+#include <Wire.h>
+#define CLK 6
+#define DATA 7
 #define CLK1 8
 #define DATA1 9
+#define CLK2 8
+#define DATA2 9
 
 void setup() {
   pinMode(CLK, INPUT);
@@ -17,6 +20,12 @@ void setup() {
   pinMode(CLK1, INPUT_PULLUP);
   pinMode(DATA1, INPUT);
   pinMode(DATA1, INPUT_PULLUP);
+  
+  pinMode(CLK2, INPUT);
+  pinMode(CLK2, INPUT_PULLUP);
+  pinMode(DATA2, INPUT);
+  pinMode(DATA2, INPUT_PULLUP);
+  Wire.begin();
   Serial.begin (115200);
   Serial.println("KY-040 Start A:");
 }
@@ -24,41 +33,59 @@ void setup() {
 static uint8_t prevNextCode = 0;
 static uint16_t store=0;
 
-
 static uint8_t prevNextCode1 = 0;
 static uint16_t store1=0;
 
+
+static uint8_t prevNextCode2 = 0;
+static uint16_t store2=0;
+
 void loop() {
-static int8_t c,val;
-static int8_t c1,val1;
-  if( val1=read_rotary1() ) {
-      c1 +=val1;
-      Serial.print(val1);Serial.print("a ");
-
-      // if ( prevNextCode==0x0b) {
-      //    Serial.print("eleven ");
-      //    Serial.println(store,HEX);
-      // }
-
-      // if ( prevNextCode==0x07) {
-      //    Serial.print("seven ");
-      //    Serial.println(store,HEX);
-      // }
+  static int8_t c,val;
+  static int8_t c1,val1;
+  static int8_t c2,val2;
+  bool wasInput = false;
+  
+  if( val=read_rotary() ) {
+      c +=val;
+      Serial.print(c);Serial.print("X ");
+      wasInput = true;
+   
    }
 
-   if( val=read_rotary() ) {
-      c +=val;
-      Serial.print(val);Serial.print("b ");
+  if( val1=read_rotary1() ) {
+      c1 +=val1;
+      Serial.print(c1);Serial.print("Y ");
+      wasInput = true;
+   }
 
-      // if ( prevNextCode==0x0b) {
-      //    Serial.print("eleven ");
-      //    Serial.println(store,HEX);
-      // }
 
-      // if ( prevNextCode==0x07) {
-      //    Serial.print("seven ");
-      //    Serial.println(store,HEX);
-      // }
+   if (val2=read_rotary2()){
+      c2 += val2;
+      Serial.print(c2);Serial.print("COL ");
+      wasInput = true;
+   }
+
+   if(wasInput){
+      int masterAddress = 0;
+      byte packet = 0;
+      if(val){
+        packet |= 1<<7;
+        packet |= (val==1?1:0)<<6; 
+      }
+      if(val1){
+        packet |= 1 <<5;
+        packet |= (val1==1?1:0) << 4;
+      }
+      if(val2){
+        packet |= 1 <<3;
+        packet |= (val2==1?1:0) << 2;
+      }
+      Serial.print("Packet ");
+      Serial.println(packet, BIN);
+      Wire.beginTransmission(masterAddress);
+      Wire.write(packet);
+      Wire.endTransmission();
    }
    
 }
@@ -101,6 +128,27 @@ int8_t read_rotary1() {
       //if (store==0xe817) return -1;
       if ((store1&0xff)==0x2b) return -1;
       if ((store1&0xff)==0x17) return 1;
+   }
+   
+   return 0;
+}
+
+int8_t read_rotary2() {
+  static int8_t rot_enc_table2[] = {0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0};
+
+  prevNextCode2 <<= 2;
+  if (digitalRead(DATA2)) prevNextCode2 |= 0x02;
+  if (digitalRead(CLK2)) prevNextCode2 |= 0x01;
+  prevNextCode2 &= 0x0f;
+
+   // If valid then store as 16 bit data.
+   if  (rot_enc_table2[prevNextCode2] ) {
+      store2 <<= 4;
+      store2 |= prevNextCode2;
+      //if (store==0xd42b) return 1;
+      //if (store==0xe817) return -1;
+      if ((store2&0xff)==0x2b) return -1;
+      if ((store2&0xff)==0x17) return 1;
    }
    
    return 0;
