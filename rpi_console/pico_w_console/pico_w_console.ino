@@ -44,6 +44,7 @@ void setup() {
 
   // Wire.begin();
   Serial.begin (9600);
+  Serial1.begin(9600);
   Serial.println("KY-040 Test Start:");
   btnDown = false;
 }
@@ -115,9 +116,10 @@ void loop() {
       }
       Serial.print("Packet ");
       Serial.println(packet, BIN);
-      Wire.beginTransmission(masterAddress);
-      Wire.write(packet);
-      Wire.endTransmission();
+      // Wire.beginTransmission(masterAddress);
+      // Wire.write(packet);
+      // Wire.endTransmission();
+      Serial1.write(packet);
    }
    
 }

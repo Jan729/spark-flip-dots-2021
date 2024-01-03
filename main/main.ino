@@ -8,15 +8,31 @@
 #include "rotaryEncoder.h"
 
 void setup() {
-  pinMode(CLEAR_PIN, INPUT);
   // attachInterrupt(digitalPinToInterrupt(CLEAR_PIN), HandleClearButton, RISING);
+  // pinMode(CLEAR_PIN, INPUT);
   
-  pinMode(ENCODER_CLK_H, INPUT);
-  pinMode(ENCODER_DT_H, INPUT);
-  pinMode(ENCODER_CLK_V, INPUT);
-  pinMode(ENCODER_DT_V, INPUT);
-  pinMode(ENCODER_CLK_C, INPUT);
-  pinMode(ENCODER_DT_C, INPUT);
+  // pinMode(ENCODER_CLK_H, INPUT);
+  // pinMode(ENCODER_DT_H, INPUT);
+  // pinMode(ENCODER_CLK_V, INPUT);
+  // pinMode(ENCODER_DT_V, INPUT);
+  // pinMode(ENCODER_CLK_C, INPUT);
+  // pinMode(ENCODER_DT_C, INPUT);
+
+  Serial1.begin(9600); // input from RPI console over UART. 19 is RX1, 18 is TX1
+  //packet format 1 byte sent with bits: 0b'abcd_efgh:
+  /*
+  a -> input on X encoder
+  b -> dX = (b?1:-1)
+  c -> input on Y encoder
+  d -> dY = (d?1:-1)
+  e -> input on color encoder
+  f -> dC = (f?1:-1)
+  g -> button pressed = 1, button unpressed = 0. debounced on the RPI side.
+  h -> unused.
+
+  */  
+  //ref https://www.arduino.cc/reference/en/language/functions/communication/serial/
+
   // tell FastLED there's 32 WS2812B leds on pins
   //a
   FastLED.addLeds<NEOPIXEL, 29>(leds[0], 32);
@@ -80,7 +96,9 @@ void setup() {
 }
 
 void loop() {
-  HandleClearButton(); //rpress reset to change from idle to rainbow
+  int input = ReadInputsFromConsoleUART();
+
+  HandleClearButton(input); //rpress reset to change from idle to rainbow
   if (shouldClearDisplay)
   {
     clearDisplay();
@@ -91,9 +109,9 @@ void loop() {
   if (playEtchASketch)
   {
     BlinkEtchASketchCursor();
-    ReadVerticalEncoder();
-    ReadHorizontalEncoder();
-    ReadColour();
+    ReadVerticalEncoder(input);
+    ReadHorizontalEncoder(input);
+    ReadColour(input);
     CheckIfIdle();
   }
   else
@@ -196,16 +214,16 @@ void clearDisplay() {
 
 
 
-void HandleClearButton()
+void HandleClearButton(byte in)
 {
-  const int debounceTime =250;
-
-  if(prevBtn == LOW && digitalRead(CLEAR_PIN)==HIGH){ //on posedge, start timer
+  const int debounceTime =250; //ms
+  
+  if(prevBtn == LOW && bitRead(in,1) ){ //on posedge, start timer
     btnDebounceTimer = millis();
     prevBtn = HIGH;
   }
   
-  else if(prevBtn == HIGH && digitalRead(CLEAR_PIN)==LOW && millis()-btnDebounceTimer > debounceTime){
+  else if(prevBtn == HIGH &&  !bitRead(in,1) && millis()-btnDebounceTimer > debounceTime){
       playEtchASketch = true;
       shouldClearDisplay = true;
       prevBtn = LOW;
@@ -223,8 +241,15 @@ void updateValueV(int delta) {
   return;
 }
 
+
+byte ReadInputsFromConsoleUART(){
+  if(Serial1.available()) return Serial1.read();
+  
+  return 0; // by default, 0
+
+}
 //reads the vertical encoder and draws a new pixel depending on the input
-void ReadVerticalEncoder() {
+void ReadVerticalEncoder(byte in) {
   // Original setup 
   // int clk_V = digitalRead(ENCODER_CLK_V);
   // if ((clk_V != prevClk_V) && (clk_V == LOW)) {
@@ -236,8 +261,8 @@ void ReadVerticalEncoder() {
   // }
   // prevClk_V = clk_V;
 
-  // Modified setup 
-  int8_t deltaV = read_rotary(ENCODER_DT_V, ENCODER_CLK_V);
+  // Modified to use UART input from console 
+  int8_t deltaV = bitRead(in, 5) * (bitRead(in, 4)?1:-1);
   if (deltaV != 0){
     leds[vertical][horizontal] = colours[counter];
     updateValueV (deltaV);
@@ -247,29 +272,39 @@ void ReadVerticalEncoder() {
 }
 
 //reads horizontal encoder and draws a new pixel depending on input
-void ReadHorizontalEncoder() {
-  int clk_H = digitalRead(ENCODER_CLK_H);
-  if ((clk_H != prevClk_H) && (clk_H == LOW)) {
+void ReadHorizontalEncoder(byte in) {
+  // int clk_H = digitalRead(ENCODER_CLK_H);
+  // if ((clk_H != prevClk_H) && (clk_H == LOW)) {
+  //   leds[vertical][horizontal] = colours[counter];
+  //   int dtH = digitalRead(ENCODER_DT_H);
+  //   int deltaH = dtH == HIGH ? -1 : 1;
+  //   updateValueH(deltaH);
+  //   updateColour();
+  // }
+  // prevClk_H = clk_H;
+  int deltaH = bitRead(in, 7) * (bitRead(in, 6)?1:-1);
+  if(deltaH != 0){
     leds[vertical][horizontal] = colours[counter];
-    int dtH = digitalRead(ENCODER_DT_H);
-    int deltaH = dtH == HIGH ? -1 : 1;
     updateValueH(deltaH);
     updateColour();
   }
-  prevClk_H = clk_H;
   if(BOT_DRAW) updateValueH(random(-1,2));
 }
 
 //reads the colour wheel encoder and changes the position of the wheel by +1 or -1
-void ReadColour() {
+void ReadColour(byte in) {
 
-  int clk_C = digitalRead(ENCODER_CLK_C);
-  if ((clk_C != prevClk_C) && (clk_C == LOW)) {
-    int dtC = digitalRead(ENCODER_DT_C);
-    int deltaC = dtC == HIGH ? -1 : 1;
-    updateRotaryValue(deltaC);
+  // int clk_C = digitalRead(ENCODER_CLK_C);
+  // if ((clk_C != prevClk_C) && (clk_C == LOW)) {
+  //   int dtC = digitalRead(ENCODER_DT_C);
+  //   int deltaC = dtC == HIGH ? -1 : 1;
+  //   updateRotaryValue(deltaC);
+  // }
+  // prevClk_C = clk_C;
+  int dtC = bitRead(in, 3) * (bitRead(in, 2)?1:-1);
+  if(dtC != 0){
+    updateRotaryValue(dtC);
   }
-  prevClk_C = clk_C;
   if(BOT_DRAW && random(0,10) > 8) updateRotaryValue(random(-1,2));
 }
 
