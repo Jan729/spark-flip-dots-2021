@@ -10,7 +10,7 @@
 void setup() {
   // attachInterrupt(digitalPinToInterrupt(CLEAR_PIN), HandleClearButton, RISING);
   // pinMode(CLEAR_PIN, INPUT);
-  
+
   // pinMode(ENCODER_CLK_H, INPUT);
   // pinMode(ENCODER_DT_H, INPUT);
   // pinMode(ENCODER_CLK_V, INPUT);
@@ -18,7 +18,10 @@ void setup() {
   // pinMode(ENCODER_CLK_C, INPUT);
   // pinMode(ENCODER_DT_C, INPUT);
 
-  Serial1.begin(9600); // input from RPI console over UART. 19 is RX1, 18 is TX1
+  Serial1.begin(31250);   // input from RPI console over UART. 19 is RX1, 18 is TX1
+                          // src code is in pico_w_console
+  Serial.begin(9600);
+  Serial.println("Initializing");
   //packet format 1 byte sent with bits: 0b'abcd_efgh:
   /*
   a -> input on X encoder
@@ -30,7 +33,7 @@ void setup() {
   g -> button pressed = 1, button unpressed = 0. debounced on the RPI side.
   h -> unused.
 
-  */  
+  */
   //ref https://www.arduino.cc/reference/en/language/functions/communication/serial/
 
   // tell FastLED there's 32 WS2812B leds on pins
@@ -95,27 +98,26 @@ void setup() {
   // pong();
 }
 
-void loop() {
-  int input = ReadInputsFromConsoleUART();
 
-  HandleClearButton(input); //rpress reset to change from idle to rainbow
-  if (shouldClearDisplay)
-  {
+byte console_input;  // persistence issues?
+void loop() {
+  console_input = ReadInputsFromConsoleUART();
+
+  HandleClearButton(console_input);  //rpress reset to change from idle to rainbow
+
+  if (shouldClearDisplay) {
     clearDisplay();
     shouldClearDisplay = false;
     lastActive = millis();
   }
 
-  if (playEtchASketch)
-  {
+  if (playEtchASketch) {
     BlinkEtchASketchCursor();
-    ReadVerticalEncoder(input);
-    ReadHorizontalEncoder(input);
-    ReadColour(input);
+    ReadVerticalEncoder();
+    ReadHorizontalEncoder();
+    ReadColour();
     CheckIfIdle();
-  }
-  else
-  {
+  } else {
     run_shader();
     // int idleOption = random(0, 3);
     // switch (idleOption) {
@@ -133,74 +135,71 @@ void loop() {
   }
 }
 
-CRGB vcache[32] ;
+CRGB vcache[32];
 CRGB hcache[32];
 
 int last_vertical, last_horizontal;
-void BlinkEtchASketchCursor(){
-    int clk_div = 10;
-    cursorMode cm = CM_XPULSE;
-    cursor_counter++;
-    
-    switch(cm){
-      case CM_BLINK:
-        if(cursor_counter % 100 > 60){
-          leds[vertical][horizontal] = CRGB::Black;
-        }
-        else{
-          leds[vertical][horizontal] = colours[counter];
-        }
+void BlinkEtchASketchCursor() {
+  int clk_div = 10;
+  cursorMode cm = CM_BLINK;
+  cursor_counter++;
+
+  switch (cm) {
+    case CM_BLINK:
+      if (cursor_counter % 100 > 60) {
+        leds[vertical][horizontal] = CRGB::Black;
+      } else {
+        leds[vertical][horizontal] = colours[counter];
+      }
       break;
-      case CM_XPULSE:
-        // for(int i = 0; i < 32 ;i++){
-        //   vcache[i] = leds[horizontal][i]; 
-        //   hcache[i] = leds[i][vertical];
-        // }
-        if(last_horizontal != horizontal || last_vertical!=vertical){
-          //restore last
-          for(int i = 0; i < 32 ;i++){
-          leds[last_vertical][i] =vcache[i];  
+    case CM_XPULSE:
+      // for(int i = 0; i < 32 ;i++){
+      //   vcache[i] = leds[horizontal][i];
+      //   hcache[i] = leds[i][vertical];
+      // }
+      if (last_horizontal != horizontal || last_vertical != vertical) {
+        //restore last
+        for (int i = 0; i < 32; i++) {
+          leds[last_vertical][i] = vcache[i];
           leds[i][last_horizontal] = hcache[i];
           //save current
-          vcache[i] = leds[horizontal][i]; 
+          vcache[i] = leds[horizontal][i];
           hcache[i] = leds[i][vertical];
-         }
         }
+      }
 
-        for(int i = 0; i < 32 ;i++){
-          leds[vertical][i] = colours[counter];
-          leds[i][horizontal] = colours[counter];
-        }
+      for (int i = 0; i < 32; i++) {
+        leds[vertical][i] = colours[counter];
+        leds[i][horizontal] = colours[counter];
+      }
 
       break;
-    }
-    FastLED.show();
-    
-    // cursor_counter++;
-    // if (cursor_counter % switch_cursor == 0) {
-    //   if (!black) {
-    //     leds[vertical][horizontal] = CRGB::Black;
-    //     black = true;
-    //   }
-    //   else {
-    //     // eraser
-    //     if (counter == 19) {
-    //       leds[vertical][horizontal].setRGB(255, 20, 147);
-    //     }
-    //     // show current color
-    //     else {
-    //       leds[vertical][horizontal] = colours[counter];
-    //     }
-    //     black = false;
-    //   }
-    //   FastLED.show(); 
-    // }
+  }
+  FastLED.show();
+
+  // cursor_counter++;
+  // if (cursor_counter % switch_cursor == 0) {
+  //   if (!black) {
+  //     leds[vertical][horizontal] = CRGB::Black;
+  //     black = true;
+  //   }
+  //   else {
+  //     // eraser
+  //     if (counter == 19) {
+  //       leds[vertical][horizontal].setRGB(255, 20, 147);
+  //     }
+  //     // show current color
+  //     else {
+  //       leds[vertical][horizontal] = colours[counter];
+  //     }
+  //     black = false;
+  //   }
+  //   FastLED.show();
+  // }
 }
 
-void CheckIfIdle()
-{
-  if (millis() - lastActive > IDLE_TIMEOUT)
-  {
+void CheckIfIdle() {
+  if (millis() - lastActive > IDLE_TIMEOUT) {
     clearDisplay();
     playEtchASketch = false;
   }
@@ -213,66 +212,94 @@ void clearDisplay() {
 }
 
 
+void testOut(uint8_t testByte) {
+  // confirmed -- the values are being read correctly.
+  if (testByte == 0) return;
+  clearDisplay();
+  delay(100);
+  for (int i = 0; i < 8; i++) {
+    leds[0][i] = bitRead(testByte, i) ? CRGB::Red : CRGB::Azure;
+  }
 
-void HandleClearButton(byte in)
-{
-  const int debounceTime =250; //ms
-  
-  if(prevBtn == LOW && bitRead(in,1) ){ //on posedge, start timer
+  FastLED.show();
+  delay(1000);
+  clearDisplay();
+}
+
+void checkPoint(CRGB color) {
+  leds[1][1] = color;
+}
+
+void HandleClearButton(byte in) {
+  const int debounceTime = 250;  //ms
+  // if(in!=0) testOut(in);
+
+  if (prevBtn == LOW && bitRead(in, 1)) {  //on posedge, start timer
     btnDebounceTimer = millis();
     prevBtn = HIGH;
   }
-  
-  else if(prevBtn == HIGH &&  !bitRead(in,1) && millis()-btnDebounceTimer > debounceTime){
-      playEtchASketch = true;
-      shouldClearDisplay = true;
-      prevBtn = LOW;
+
+  else if (prevBtn == HIGH && !bitRead(in, 1) && millis() - btnDebounceTimer > debounceTime) {
+    playEtchASketch = true;
+    shouldClearDisplay = true;
+    prevBtn = LOW;
   }
 }
 
 void updateValueH(int delta) {
-  horizontal = wrap_constrain(horizontal + delta, 0, 31);
+  horizontal = (horizontal+delta)%32;
+  // horizontal = wrap_constrain(horizontal + delta, 0, 31);
   return;
 }
 
 //updates the vertical location of the "cursor" and bounds it
 void updateValueV(int delta) {
-  vertical = wrap_constrain(vertical + delta, 0, 31);
+  vertical = (vertical+delta)%32;
+  // vertical = wrap_constrain(vertical + delta, 0, 31);
   return;
 }
 
 
-byte ReadInputsFromConsoleUART(){
-  if(Serial1.available()) return Serial1.read();
-  
-  return 0; // by default, 0
+byte ReadInputsFromConsoleUART() {
+  uint8_t input = 0;
+  if (Serial1.available()) {
+    input = Serial1.read();
+    Serial.print("Got Input >> ");
+    Serial.println(input, BIN);
 
+    // if (playEtchASketch) {
+    //   BlinkEtchASketchCursor();
+    //   ReadVerticalEncoder(console_input);
+    //   ReadHorizontalEncoder(console_input);
+    //   ReadColour(console_input);
+    //   CheckIfIdle();
+    // }
+    // testOut(console_input);
+  }
+
+  return input;  // by default, 0
 }
-//reads the vertical encoder and draws a new pixel depending on the input
-void ReadVerticalEncoder(byte in) {
-  // Original setup 
-  // int clk_V = digitalRead(ENCODER_CLK_V);
-  // if ((clk_V != prevClk_V) && (clk_V == LOW)) {
-  //   leds[vertical][horizontal] = colours[counter];
-  //   int dtV = digitalRead(ENCODER_DT_V);
-  //   int deltaV = dtV == HIGH ? 1 : -1;
-  //   updateValueV(deltaV);
-  //   updateColour();
-  // }
-  // prevClk_V = clk_V;
+//reads the vertical encoder and draws a new pixel depending on the console_input
+void ReadVerticalEncoder() {
+  if(console_input !=0){
+  // Serial.print("Reading console input in vertical encoder: ");
+  // Serial.println(console_input);
+  // Serial.println(bitRead(console_input, 7));
+  // Serial.println( (bitRead(console_input, 6) ? 1 : -1));
+  }
 
-  // Modified to use UART input from console 
-  int8_t deltaV = bitRead(in, 5) * (bitRead(in, 4)?1:-1);
-  if (deltaV != 0){
+  // Modified to use UART console_input from console
+  int8_t deltaV = bitRead(console_input, 7) * (bitRead(console_input, 6) ? 1 : -1);
+  if (deltaV != 0) {
     leds[vertical][horizontal] = colours[counter];
-    updateValueV (deltaV);
+    updateValueV(deltaV);
     updateColour();
   }
-  if(BOT_DRAW) updateValueV(random(-1,2));
+  if (BOT_DRAW) updateValueV(random(-1, 2));
 }
 
-//reads horizontal encoder and draws a new pixel depending on input
-void ReadHorizontalEncoder(byte in) {
+//reads horizontal encoder and draws a new pixel depending on console_input
+void ReadHorizontalEncoder() {
   // int clk_H = digitalRead(ENCODER_CLK_H);
   // if ((clk_H != prevClk_H) && (clk_H == LOW)) {
   //   leds[vertical][horizontal] = colours[counter];
@@ -282,17 +309,17 @@ void ReadHorizontalEncoder(byte in) {
   //   updateColour();
   // }
   // prevClk_H = clk_H;
-  int deltaH = bitRead(in, 7) * (bitRead(in, 6)?1:-1);
-  if(deltaH != 0){
+  int deltaH = bitRead(console_input, 3) * (bitRead(console_input, 2) ? 1 : -1);
+  if (deltaH != 0) {
     leds[vertical][horizontal] = colours[counter];
     updateValueH(deltaH);
     updateColour();
   }
-  if(BOT_DRAW) updateValueH(random(-1,2));
+  if (BOT_DRAW) updateValueH(random(-1, 2));
 }
 
 //reads the colour wheel encoder and changes the position of the wheel by +1 or -1
-void ReadColour(byte in) {
+void ReadColour() {
 
   // int clk_C = digitalRead(ENCODER_CLK_C);
   // if ((clk_C != prevClk_C) && (clk_C == LOW)) {
@@ -301,42 +328,46 @@ void ReadColour(byte in) {
   //   updateRotaryValue(deltaC);
   // }
   // prevClk_C = clk_C;
-  int dtC = bitRead(in, 3) * (bitRead(in, 2)?1:-1);
-  if(dtC != 0){
+  // testOut(in);
+  int dtC = bitRead(console_input, 5) * (bitRead(console_input, 4) ? 1 : -1);
+  if (dtC != 0) {
     updateRotaryValue(dtC);
+    checkPoint(0);
   }
-  if(BOT_DRAW && random(0,10) > 8) updateRotaryValue(random(-1,2));
+  if (BOT_DRAW && random(0, 10) > 8) updateRotaryValue(random(-1, 2));
 }
 
 //updates the position in the colour wheel, makes sure it does not go out of bounds
 void updateRotaryValue(int delta) {
-  if ((counter <= 0) && (delta < 0)) { //going left
+  if ((counter <= 0) && (delta < 0)) {  //going left
     counter = 19;
-  }
-  else if ((counter >= 19) && (delta > 0)) {//going right
+  } else if ((counter >= 19) && (delta > 0)) {  //going right
     counter = 0;
-  }
-  else { //add like normal
+  } else {  //add like normal
     counter = counter + delta;
   }
 }
 
 //updates the colour of the pixel depending on the position of the colour wheel
+// FIXME - last active should update on more than just update color.
 void updateColour() {
+  Serial.print("Vertical ");
+  Serial.print(vertical);
+  Serial.print("Horizontal: ");
+  Serial.println(horizontal);
   leds[vertical][horizontal] = colours[counter];
   FastLED.show();
   lastActive = millis();
 }
 
 void showRandomAnimation() {
-  int randy = random(1, NUMFILES+1);
+  int randy = random(1, NUMFILES + 1);
   String filename = "anis/" + String(randy) + ".txt";
   //Serial.println(filename);
   File f = SD.open(filename);
   //Serial.println(f.name());
   showBytes(f, 100);
   f.close();
-
 }
 
 //Function for showing textfile

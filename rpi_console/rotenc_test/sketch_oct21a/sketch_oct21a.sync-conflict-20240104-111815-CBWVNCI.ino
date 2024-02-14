@@ -2,26 +2,13 @@
 //
 // Copyright John Main - best-microcontroller-projects.com
 //
-
 #include <Wire.h>
-// UNO definitions
-// #define CLK 6
-// #define DATA 7
-// #define CLK1 8
-// #define DATA1 9
-// #define CLK2 10
-// #define DATA2 11
-
-// PICOW definitions - ensure vcc = 3v3 for rotenc.
-#define CLK 2
-#define DATA 3
-#define CLK1 4
-#define DATA1 5
-#define CLK2 6
-#define DATA2 7
-#define BTN 8
-
-bool btnDown;
+#define CLK 6
+#define DATA 7
+#define CLK1 8
+#define DATA1 9
+#define CLK2 8
+#define DATA2 9
 
 void setup() {
   pinMode(CLK, INPUT);
@@ -38,15 +25,9 @@ void setup() {
   pinMode(CLK2, INPUT_PULLUP);
   pinMode(DATA2, INPUT);
   pinMode(DATA2, INPUT_PULLUP);
-
-  pinMode(BTN, INPUT_PULLDOWN);
-
-
-  // Wire.begin();
-  Serial.begin (9600);
-  Serial1.begin(31250); // sent to master
-  Serial.println("KY-040 Test Start:");
-  btnDown = false;
+  Wire.begin();
+  Serial.begin (115200);
+  Serial.println("KY-040 Start A:");
 }
 
 static uint8_t prevNextCode = 0;
@@ -58,6 +39,7 @@ static uint16_t store1=0;
 
 static uint8_t prevNextCode2 = 0;
 static uint16_t store2=0;
+
 void loop() {
   static int8_t c,val;
   static int8_t c1,val1;
@@ -80,21 +62,9 @@ void loop() {
 
    if (val2=read_rotary2()){
       c2 += val2;
-      Serial.print(c2);Serial.println("COL ");
+      Serial.print(c2);Serial.print("COL ");
       wasInput = true;
    }
-
-  // catch button rising edge only
-  if(!btnDown && digitalRead(BTN)){
-    Serial.println("BUTTON READ");
-    btnDown = true;
-    wasInput = true;
-
-  }
-  if(btnDown && !digitalRead(BTN)){
-    btnDown = false;
-  }
-
 
    if(wasInput){
       int masterAddress = 0;
@@ -111,15 +81,11 @@ void loop() {
         packet |= 1 <<3;
         packet |= (val2==1?1:0) << 2;
       }
-      if(btnDown){
-        packet |= 1<<1;
-      }
       Serial.print("Packet ");
       Serial.println(packet, BIN);
-      // Wire.beginTransmission(masterAddress);
-      // Wire.write(packet);
-      // Wire.endTransmission();
-      Serial1.write(packet);
+      Wire.beginTransmission(masterAddress);
+      Wire.write(packet);
+      Wire.endTransmission();
    }
    
 }
