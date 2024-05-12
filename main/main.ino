@@ -1,4 +1,5 @@
 //The way to beat the interrupt is to check for state variables
+// Compile for Mega 2560
 
 #include <SD.h>
 #include <FastLED.h>
@@ -6,6 +7,7 @@
 #include "shader.h"
 #include "fsm.h"
 #include "rotaryEncoder.h"
+#define BRIGHTNESS 16 // should be low for display reasons. 
 
 void setup() {
   // attachInterrupt(digitalPinToInterrupt(CLEAR_PIN), HandleClearButton, RISING);
@@ -21,7 +23,7 @@ void setup() {
   Serial1.begin(31250);   // input from RPI console over UART. 19 is RX1, 18 is TX1
                           // src code is in pico_w_console
   Serial.begin(9600);
-  Serial.println("Initializing");
+  //Serial.println("Initializing");
   //packet format 1 byte sent with bits: 0b'abcd_efgh:
   /*
   a -> input on X encoder
@@ -74,7 +76,7 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, 47>(leds[30], 32);
   FastLED.addLeds<NEOPIXEL, 46>(leds[31], 32);
   SD.begin(CS_PIN);
-  FastLED.setBrightness(125);
+  FastLED.setBrightness(BRIGHTNESS); 
 
   //setup colours array
   int hue = 12;
@@ -99,7 +101,7 @@ void setup() {
 }
 
 
-byte console_input;  // persistence issues?
+byte console_input; 
 void loop() {
   console_input = ReadInputsFromConsoleUART();
 
@@ -264,8 +266,8 @@ byte ReadInputsFromConsoleUART() {
   uint8_t input = 0;
   if (Serial1.available()) {
     input = Serial1.read();
-    Serial.print("Got Input >> ");
-    Serial.println(input, BIN);
+    //Serial.print("Got Input >> ");
+    //Serial.println(input, BIN);
 
     // if (playEtchASketch) {
     //   BlinkEtchASketchCursor();
@@ -309,7 +311,7 @@ void ReadHorizontalEncoder() {
   //   updateColour();
   // }
   // prevClk_H = clk_H;
-  int deltaH = bitRead(console_input, 3) * (bitRead(console_input, 2) ? 1 : -1);
+  int deltaH = bitRead(console_input, 3) * (bitRead(console_input, 2) ? -1 : 1);
   if (deltaH != 0) {
     leds[vertical][horizontal] = colours[counter];
     updateValueH(deltaH);
@@ -351,10 +353,10 @@ void updateRotaryValue(int delta) {
 //updates the colour of the pixel depending on the position of the colour wheel
 // FIXME - last active should update on more than just update color.
 void updateColour() {
-  Serial.print("Vertical ");
-  Serial.print(vertical);
-  Serial.print("Horizontal: ");
-  Serial.println(horizontal);
+  //Serial.print("Vertical ");
+  //Serial.print(vertical);
+  //Serial.print("Horizontal: ");
+  //Serial.println(horizontal);
   leds[vertical][horizontal] = colours[counter];
   FastLED.show();
   lastActive = millis();
